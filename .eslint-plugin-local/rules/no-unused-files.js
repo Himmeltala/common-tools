@@ -15,11 +15,7 @@ const ROOT = process.cwd()
 let scanDone = false
 const importRefs = new Set()
 
-const ENTRY_POINTS = new Set([
-  '/src/main.ts',
-  '/src/App.vue',
-  '/src/env.d.ts',
-])
+const ENTRY_POINTS = new Set(['/src/main.ts', '/src/App.vue', '/src/env.d.ts'])
 
 const SKIP_PREFIXES = ['/src/types/']
 
@@ -57,11 +53,7 @@ function walkDir(dir) {
         if (!entry.name.startsWith('.') && entry.name !== 'node_modules') {
           result.push(...walkDir(fullPath))
         }
-      } else if (
-        entry.name.endsWith('.js') ||
-        entry.name.endsWith('.ts') ||
-        entry.name.endsWith('.vue')
-      ) {
+      } else if (entry.name.endsWith('.js') || entry.name.endsWith('.ts') || entry.name.endsWith('.vue')) {
         result.push(fullPath)
       }
     }
@@ -154,8 +146,7 @@ function extractRawImportPaths(content) {
     results.push(match[1])
   }
 
-  const globRegex =
-    /import\.meta\.glob(?:Eager)?\s*\(\s*['"]([^'"]+)['"]\s*\)/g
+  const globRegex = /import\.meta\.glob(?:Eager)?\s*\(\s*['"]([^'"]+)['"]\s*\)/g
   while ((match = globRegex.exec(content)) !== null) {
     results.push(match[1])
   }

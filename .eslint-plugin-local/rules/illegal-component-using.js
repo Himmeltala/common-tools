@@ -19,8 +19,7 @@ export default {
     docs: { description: '组件目录结构与命名规范检查' },
     messages: {
       pascalCase: '组件名 "{{ name }}" 必须使用 PascalCase 多词命名',
-      index:
-        '目录 "{{ dir }}" 包含多个 .vue 文件时不可使用 index.vue 作为入口，应使用具名文件',
+      index: '目录 "{{ dir }}" 包含多个 .vue 文件时不可使用 index.vue 作为入口，应使用具名文件',
     },
   },
   create(context) {

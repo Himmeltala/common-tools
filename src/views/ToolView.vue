@@ -22,7 +22,7 @@ import { toolRegistry } from '@/composables/useToolRegistry'
 
 const route = useRoute()
 
-/** 根据路由参数解析当前工具 */
+// 从路由参数中获取 categoryId 和 toolId
 const currentTool = computed(() => {
   const categoryId = route.params.categoryId as string
   const toolId = route.params.toolId as string

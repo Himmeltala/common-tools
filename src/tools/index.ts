@@ -9,12 +9,12 @@
 
 import { toolRegistry } from '@/composables/useToolRegistry'
 import { markdownCategory } from '@/tools/markdown'
+import { databaseCategory } from '@/tools/database'
 
 /**
  * 注册所有内置工具类别
- * 新增类别时在此处添加注册调用即可
  */
 export function registerBuiltinTools(): void {
-  // Markdown 工具
   toolRegistry.register(markdownCategory)
+  toolRegistry.register(databaseCategory)
 }

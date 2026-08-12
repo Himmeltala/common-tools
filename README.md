@@ -1,68 +1,28 @@
-# 项目管理器
+# 常用工具箱
 
-基于 Electron + Vue 3 + Vite + TypeScript 的 Windows 桌面工具，用于管理多个项目的启动、停止、构建、版本控制操作。支持 npm（Node.js）和 Maven（Java）项目。
+基于 Electron + Vue 3 + Vite + TypeScript 的 Windows 桌面工具箱，集成 Markdown 预览、PDF 转换等常用工具，支持按类别扩展。
 
 ## 功能
 
-### 项目管理
+### Markdown 工具
 
-- 添加、删除、刷新项目源（支持多源切换，每个源独立配置文件）
-- 启动 / 停止项目（自动检测项目类型选择启动命令）
-- 双击项目行切换启停状态
-- 交互式多选启动
-- 打开项目文件夹、重命名项目
-- 移除项目（仅从列表移除，不删除文件）
-- 物理删除（从磁盘删除项目文件）
+- 编辑并实时预览 Markdown 内容，支持代码高亮
+- 打开本地 `.md` 文件编辑
+- Markdown 转 PDF，支持亮色/暗色/GitHub/简约四种输出主题
+- PDF 输出前实时预览主题效果
 
-### 构建与依赖
-
-- 构建项目并自动压缩 `dist` / `target` 目录为 ZIP
-- 安装依赖（`npm install` / `mvn dependency:resolve`）
-- 清理构建产物（dist / target 目录 + ZIP 文件）
-- 清理依赖目录（node_modules / target）
-- 扫描项目的 npm scripts / Maven 任务并通过菜单直接运行
-
-### 版本控制
-
-- 支持 SVN 和 Git（通过抽象接口扩展）
-- 单项目获取更新
-- 批量范围更新（冲突不阻塞，末尾汇总）
-- 查看提交历史 / 提交 GUI / 日志 GUI
-- 远程状态检查（远程是否有新提交）
-- 本地状态检查（本地是否有未提交变更）
-- 项目迁移（SVN clone / Git clone / 普通复制）
-
-### 定时检查
-
-- 定时远程检查（检测远程仓库新提交）
-- 定时本地检查（检测本地未提交变更）
-- 通知去重（同类型未读通知不重复提醒）
-
-### 搜索与筛选
-
-- 文本搜索（项目名称 + 路径）
-- 支持正则表达式、区分大小写、全词匹配
-- 状态筛选（已启动 / 未启动）
-- 跨源搜索（"所有源"模式）
-
-### 主题与界面
+### 系统能力
 
 - 暗色 / 亮色主题切换（基于 Element Plus）
-- 项目名称彩色标识
-- 可折叠的日志输出面板（含进程实时输出）
-- 后台任务进度指示器
-- 通知面板（版本变更提醒）
+- Windows 原生通知（Electron Notification API）
+- 通知持久化（已读/未读状态）
+- 通用 Key-Value 存储
+- 动态设置表单（基于 JSON Schema）
 
-### 代理配置管理
+### 扩展机制
 
-- 自动检测 Nginx 反向代理配置文件
-- 可视化查看和切换代理目标地址
-- 支持 `.env` 环境变量中的连接信息
-
-### 后台任务
-
-- 构建、版本控制更新、迁移等耗时操作在后台执行
-- 状态栏显示任务进度，可点击查看详情
+- 工具类别注册表模式（ToolCategoryRegistry），新增类别只需注册即可
+- 工具执行器模式（ToolExecutor），主进程能力按需接入
 
 ## 技术栈
 
@@ -75,43 +35,36 @@
 | Element Plus | UI 组件库 |
 | Pinia | 状态管理 |
 | Vue Router | 路由 |
+| markdown-it | Markdown 解析 |
+| highlight.js | 代码语法高亮 |
 
 ## 项目结构
 
 ```
-项目管理器/
+常用工具箱/
 ├── src/                       # 前端代码
-│   ├── components/            # Vue 组件
-│   ├── dialogs/               # 对话框组件
+│   ├── modals/                # 全局弹窗
 │   ├── views/                 # 页面视图
-│   ├── stores/                # Pinia 状态管理
+│   ├── tools/                 # 工具注册与实现
+│   │   └── markdown/          # Markdown 工具类别
 │   ├── types/                 # TypeScript 类型定义
 │   ├── composables/           # 组合式函数
+│   ├── utils/                 # 工具函数
 │   ├── router/                # 路由配置
 │   ├── App.vue                # 根组件
 │   └── main.ts                # 前端入口
-├── electron/                  # 后端代码
+├── electron/                  # 主进程
 │   ├── main.ts                # Electron 主进程入口
-│   ├── preload.ts             # 预加载脚本
+│   ├── preload.ts             # 预加载脚本（IPC 桥接 + 白名单）
 │   └── services/              # 业务逻辑
-│       ├── project.service.ts         # 项目操作门面（启停/构建/VCS）
-│       ├── project-repository.service.ts # 项目配置 CRUD
-│       ├── process-manager.service.ts # 子进程管理
-│       ├── project-type/      # 项目类型抽象（npm / maven）
-│       ├── vcs/               # VCS 抽象（svn / git）
-│       ├── build-tool/        # 构建工具适配器（webpack/vite/rspack）
-│       ├── proxy-config/      # 代理配置适配器
-│       ├── port-config/       # 端口配置适配器
+│       ├── core/              # 基础设施（设置/存储/数据目录）
 │       ├── notification.service.ts
-│       ├── settings.service.ts
-│       ├── tool-discovery.service.ts # 工具发现（JDK/Maven/Tomcat）
-│       └── source-manager.service.ts
-├── assets/                    # 数据文件（模板 + 运行时生成）
-│   ├── about.md
+│       ├── sys-notification.service.ts  # Windows 原生通知
+│       └── tool-executor.service.ts      # 工具执行器注册表
+├── assets/                    # 数据文件
 │   ├── settings.json          # 应用设置
-│   ├── settings_schema.json   # 设置界面配置
-│   └── sources.json           # 项目源注册表
-└── .dev/                      # 开发用示例数据
+│   └── settings_schema.json   # 设置界面配置
+└── .eslint-plugin-local/      # 自定义 ESLint 规则
 ```
 
 ## 开发
@@ -131,49 +84,45 @@ npm run dev
 ### 构建
 
 ```bash
-# 构建前端 + 打包 Electron
 npm run build
+```
 
-# 仅构建前端
-npm run build:renderer
+### 打包
+
+```bash
+npm run make
+npm run pack
 ```
 
 ## 架构
 
 ```
-前端 (Vue 3)                   后端 (Electron Main)
-─────────────                  ──────────────────
-  Vue 组件                        IPC Handlers
-    │                                │
-  Pinia Store  ◄── preload.ts ──── Services
-    │                     │          ├── ProjectManagerService
-  Element Plus UI          │          ├── ProcessManager
-                           │          ├── VcsRegistry (SVN / Git)
-                           │          ├── ProjectTypeRegistry (npm / Maven)
-                           │          ├── NotificationService
-                           │          ├── TaskManager
-                           │          └── SourceManager
-                           │
-                    contextBridge (安全 IPC)
+渲染进程 (Vue 3)                    主进程 (Electron Main)
+  Vue 组件                            IPC Handlers
+    │                                    │
+  注册表 ◄── preload.ts ──────────── Services
+    │                        │          ├── AppSettings
+  Element Plus UI            │          ├── NotificationService
+                             │          ├── SysNotification (Windows Toast)
+                             │          ├── ToolExecutorRegistry
+                             │          ├── StoreService
+                             │          └── DataDirService
+                             │
+                  contextBridge (安全 IPC + 白名单)
 ```
 
 ### 设计特点
 
-- **VCS 抽象**：`VcsProvider` 接口抽象版本控制操作，已内置 SVN 和 Git 实现，通过 `vcsRegistry` 注册和检测
-- **项目类型抽象**：`ProjectTypeProvider` 接口抽象项目类型行为，已内置 npm 和 Maven 实现
-- **设置系统**：点号嵌套的 Key-Value 存储，自动持久化
-- **通知去重**：同类型 + 同项目的未读通知自动去重
+- **注册表模式**：`ToolCategoryRegistry` 管理工具类别，新增类别无需修改框架代码
+- **执行器模式**：`ToolExecutor` 接口抽象主进程工具操作，通过 `toolExecutors` 注册
+- **IPC 白名单**：preload 层校验 channel 前缀，非白名单通道拒绝调用
+- **设置系统**：点号嵌套 Key-Value 存储 + JSON Schema 驱动 UI，自动持久化
+- **原生通知**：Electron Notification API，支持静默/常驻模式，通知点击聚焦窗口
 
-## 打包
+## 新增工具类别
 
-构建产物输出到 `dist/` 目录：
-
-```bash
-# 一键打包
-npm run build
-```
-
-## 分发
-
-- 使用 Electron Builder 打包为 Windows 安装程序
-- 内置自动更新功能（局域网更新服务器）
+1. 创建 `src/tools/<category>/` 目录
+2. 实现工具 Vue 组件
+3. 创建 `index.ts` 导出 `ToolCategory` 对象
+4. 在 `src/tools/index.ts` 中调用 `toolRegistry.register()`
+5. 如需主进程能力，在 `electron/services/tool-executor.service.ts` 注册 `ToolExecutor`

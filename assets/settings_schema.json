@@ -22,28 +22,36 @@
     ]
   },
   {
-    "key": "notifications",
+    "key": "notification",
     "label": "通知",
     "groups": [
       {
         "label": "通用",
         "settings": [
           {
-            "key": "notifications.enabled",
-            "label": "启用通知",
+            "key": "notification.enabled",
+            "label": "启用系统通知",
             "type": "checkbox",
             "default": true,
-            "description": "关闭后所有通知类型都不会显示"
+            "description": "关闭后不弹出 Windows 系统通知"
           },
           {
-            "key": "notifications.max_count",
-            "label": "最大通知数",
-            "type": "spinbox",
-            "default": 100,
-            "min": 10,
-            "max": 1000,
-            "step": 10,
-            "description": "超出上限后自动删除最旧的通知"
+            "key": "notification.silent",
+            "label": "静默通知",
+            "type": "checkbox",
+            "default": false,
+            "description": "开启后通知不播放提示音"
+          },
+          {
+            "key": "notification.timeoutType",
+            "label": "显示时长",
+            "type": "combo",
+            "default": "default",
+            "options": [
+              { "label": "自动消失", "value": "default" },
+              { "label": "常驻", "value": "never" }
+            ],
+            "description": "系统通知在屏幕上的停留方式"
           }
         ]
       }

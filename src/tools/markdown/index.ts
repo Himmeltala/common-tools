@@ -11,7 +11,7 @@ import type { ToolCategory } from '@/types/tool'
 import MdPreview from '@/tools/markdown/MdPreview.vue'
 import MdToPdf from '@/tools/markdown/MdToPdf.vue'
 
-/** Markdown 工具类别 */
+// Markdown 工具类别
 export const markdownCategory: ToolCategory = {
   id: 'markdown',
   label: 'Markdown 工具',

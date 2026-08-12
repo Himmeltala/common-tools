@@ -7,25 +7,18 @@ import { fileURLToPath } from 'url'
 
 import { AppSettings } from '@electron/services/core/settings.service'
 import { NotificationService } from '@electron/services/notification.service'
-import { ensureDataDir, getSourceRoot, scanDataDir, deleteItem } from '@electron/services/core/data-dir.service'
+import { ensureDataDir } from '@electron/services/core/data-dir.service'
 import { createStore, storeGet, storeSet, storeDelete, storeKeys } from '@electron/services/core/store.service'
 import type { Store } from '@electron/services/core/store.service'
 import { toolExecutors, type ToolExecutorContext } from '@electron/services/tool-executor.service'
+import '@electron/services/python-executor.service'
+import { setupSysNotificationIpc } from '@electron/services/sys-notification.service'
 // #endregion
 
 /** ESM 下 __dirname 不可用，通过 import.meta.url 派生 */
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
-/**
- * 获取源码根目录
- * 开发环境使用项目根目录，打包后使用 resources 目录
- */
-function getSourceRootDir(): string {
-  if (app.isPackaged) return process.resourcesPath
-  return resolve(__dirname, '..')
-}
-
-const APP_NAME = '常用工具箱'
+const APP_NAME = 'common-tools'
 // #region Services & State
 let mainWindow: BrowserWindow | null = null
 let settings: AppSettings
@@ -73,6 +66,8 @@ function createWindow(): void {
 
   setupMenu()
   registerIpc()
+  // 注册系统通知 IPC
+  setupSysNotificationIpc(() => mainWindow)
 }
 // #endregion
 
@@ -84,7 +79,6 @@ function setupMenu(): void {
       label: '文件',
       submenu: [
         { label: '设置', click: () => send('settings') },
-        { label: '数据目录管理', click: () => send('dataDir') },
         { type: 'separator' },
         { role: 'quit', label: '退出' },
       ],
@@ -162,10 +156,6 @@ function registerIpc(): void {
 
   // 系统
   ipcMain.handle('system:getVersion', () => appVersion)
-  ipcMain.handle('system:getDataDir', () => ensureDataDir(APP_NAME, getSourceRoot()))
-  ipcMain.handle('system:getSourceRoot', () => getSourceRoot())
-  ipcMain.handle('system:scanDataDir', () => scanDataDir(APP_NAME))
-  ipcMain.handle('system:deleteDataDirItem', (_e, itemPath: string) => deleteItem(itemPath))
   ipcMain.handle('system:selectDirectory', async (_e, defaultPath?: string) => {
     const result = await dialog.showOpenDialog({ properties: ['openDirectory'], defaultPath })
     return result.canceled ? null : result.filePaths[0]
@@ -177,13 +167,16 @@ function registerIpc(): void {
     })
     return result.canceled ? null : result.filePaths[0]
   })
-  ipcMain.handle('system:saveFile', async (_e, defaultPath?: string, filters?: { name: string; extensions: string[] }[]) => {
-    const result = await dialog.showSaveDialog({
-      defaultPath,
-      filters: filters || [{ name: '所有文件', extensions: ['*'] }],
-    })
-    return result.canceled ? null : result.filePath
-  })
+  ipcMain.handle(
+    'system:saveFile',
+    async (_e, defaultPath?: string, filters?: { name: string; extensions: string[] }[]) => {
+      const result = await dialog.showSaveDialog({
+        defaultPath,
+        filters: filters || [{ name: '所有文件', extensions: ['*'] }],
+      })
+      return result.canceled ? null : result.filePath
+    },
+  )
   ipcMain.handle('system:log', (_e, type: string, text: string) => {
     mainWindow?.webContents.send('event:output', { type, text })
   })
@@ -192,7 +185,7 @@ function registerIpc(): void {
 
 // #region Init
 function initServices(): void {
-  const sourceRoot = getSourceRootDir()
+  const sourceRoot = app.isPackaged ? process.resourcesPath : resolve(__dirname, '..')
   const dataDir = ensureDataDir(APP_NAME, sourceRoot)
   store = createStore(dataDir)
 
@@ -239,6 +232,9 @@ if (!gotLock) {
     }
   })
 }
+
+// Windows 通知要求设置 AppUserModelId
+app.setAppUserModelId('com.common-tools.app')
 
 app.whenReady().then(() => {
   initServices()

@@ -15,14 +15,7 @@ const HEX_RE = /#[0-9a-fA-F]{3,8}\b/g
 const RGB_RE = /rgba?\s*\([^)]+\)/g
 const HSL_RE = /hsla?\s*\([^)]+\)/g
 
-const ALLOWED_KEYWORDS = new Set([
-  'transparent',
-  'currentColor',
-  'currentcolor',
-  'inherit',
-  'initial',
-  'unset',
-])
+const ALLOWED_KEYWORDS = new Set(['transparent', 'currentColor', 'currentcolor', 'inherit', 'initial', 'unset'])
 
 const NAMED_COLOR_RE =
   /(?<![-\w])(black|white|red|blue|green|yellow|orange|purple|pink|brown|gray|grey|silver|gold|navy|teal|aqua|cyan|magenta|lime|olive|maroon|coral|tan|plum|violet|indigo|salmon|tomato|wheat|khaki|beige|ivory|whitesmoke|lightgray|lightgrey|lightblue|lightgreen|lightyellow|lightpink|lightcyan|darkgray|darkgrey|darkblue|darkgreen|darkred|darkcyan|darkmagenta|darkorange|darkpurple|dimgray|dimgrey|slategray|slategrey)(?![-\w])/gi
@@ -39,12 +32,10 @@ export default {
   meta: {
     type: 'problem',
     docs: {
-      description:
-        '禁止在 Vue 组件 <style> 中硬编码颜色值，必须使用 var(--xxx) 引用',
+      description: '禁止在 Vue 组件 <style> 中硬编码颜色值，必须使用 var(--xxx) 引用',
     },
     messages: {
-      hardcodedColor:
-        '禁止硬编码颜色值 "{{ value }}"（{{ type }}），请使用 var(--xxx) 自定义属性替代',
+      hardcodedColor: '禁止硬编码颜色值 "{{ value }}"（{{ type }}），请使用 var(--xxx) 自定义属性替代',
     },
   },
 
@@ -53,6 +44,9 @@ export default {
     const rel = '/' + path.relative(ROOT, f).replace(/\\/g, '/')
 
     if (!rel.startsWith('/src/') || !f.endsWith('.vue')) return {}
+
+    // 工具组件允许自定义样式（如 PDF 主题预览等场景）
+    if (rel.startsWith('/src/tools/')) return {}
 
     const source = context.sourceCode.text
 
@@ -84,12 +78,7 @@ export default {
         const line = lines[i]
 
         const trimmed = line.trim()
-        if (
-          trimmed.startsWith('//') ||
-          trimmed.startsWith('/*') ||
-          trimmed.startsWith('*')
-        )
-          continue
+        if (trimmed.startsWith('//') || trimmed.startsWith('/*') || trimmed.startsWith('*')) continue
 
         if (isVarOnlyLine(line)) continue
 

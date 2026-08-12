@@ -4,29 +4,20 @@
  * @LastEditors: zhengrenfu
  * @LastEditTime: 2026-07-31 00:00:00
  * @FilePath: .eslint-plugin-local/rules/illegal-annotation.js
- * @Description: 文件头注释 + 全部注释规范 / AI 表述检查
+ * @Description: 文件头注释
  */
 
 import path from 'path'
 
 const ROOT = process.cwd()
 
-const HEADER_FIELDS = [
-  'Author',
-  'Date',
-  'LastEditors',
-  'LastEditTime',
-  'FilePath',
-  'Description',
-]
+const HEADER_FIELDS = ['Author', 'Date', 'LastEditors', 'LastEditTime', 'FilePath', 'Description']
 
 const LINE_AI =
   /^\s*\/\/\s*(新增|修改|优化|调整|重构|删除了|添加了|修复了|实现了|更新了|进行了|用于|用来|这是一个|这个函数|该方法|此处|这里).{2,}/i
-const BLOCK_AI =
-  /^\s*\*\s*(新增|修改|优化|调整|重构|删除了|添加了|修复了|实现了|更新了|进行了|用于|用来).{2,}/i
+const BLOCK_AI = /^\s*\*\s*(新增|修改|优化|调整|重构|删除了|添加了|修复了|实现了|更新了|进行了|用于|用来).{2,}/i
 
-const SYMBOL_RE =
-  /[+=×←-⇿─-╿■-◿☀-➿]|\uD83C[\uDF00-\uDFFF]|\uD83D[\uDC00-\uDEFF]|\uD83E[\uDD00-\uDDFF]/
+const SYMBOL_RE = /[+=×←-⇿─-╿■-◿☀-➿]|\uD83C[\uDF00-\uDFFF]|\uD83D[\uDC00-\uDEFF]|\uD83E[\uDD00-\uDDFF]/
 
 function hasSymbol(s) {
   return SYMBOL_RE.test(s)
@@ -51,8 +42,7 @@ export default {
 
   create(context) {
     const f = context.filename || ''
-    if (!f.endsWith('.vue') && !f.endsWith('.js') && !f.endsWith('.ts'))
-      return {}
+    if (!f.endsWith('.vue') && !f.endsWith('.js') && !f.endsWith('.ts')) return {}
 
     const rel = '/' + path.relative(ROOT, f).replace(/\\/g, '/')
     if (!rel.startsWith('/src/')) return {}
@@ -65,11 +55,7 @@ export default {
 
     // 1. 文件头注释检查
     const raw = context.sourceCode.text || ''
-    const h = raw.match(
-      f.endsWith('.vue')
-        ? /^<!--([\s\S]*?)-->/
-        : /^\/\*{1,2}([\s\S]*?)\*\//,
-    )
+    const h = raw.match(f.endsWith('.vue') ? /^<!--([\s\S]*?)-->/ : /^\/\*{1,2}([\s\S]*?)\*\//)
     if (!h) {
       addReport('noHeader', { line: 1, column: 0 })
     } else {
@@ -112,6 +98,9 @@ export default {
         const text = c.value
         if (!text.trim()) continue
 
+        // 跳过 ESLint 指令注释（/* eslint-disable */ 等）
+        if (/^\s*eslint/.test(text.trim())) continue
+
         const isJsdoc = text.trim().startsWith('*')
 
         if (!isJsdoc) {
@@ -125,10 +114,7 @@ export default {
         }
 
         if (!text.includes('\n') && !/@/.test(text)) {
-          const after = context.sourceCode.text
-            .slice(c.range[1])
-            .replace(/\s+/g, ' ')
-            .trim()
+          const after = context.sourceCode.text.slice(c.range[1]).replace(/\s+/g, ' ').trim()
           const rest = after.replace(/^export\s+/, '')
           if (/^(function|const|let|var|async)\b/.test(rest)) {
             addReport('pseudoJsdoc', c.loc)

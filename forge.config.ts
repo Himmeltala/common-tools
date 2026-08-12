@@ -4,17 +4,17 @@ import { MakerZIP } from '@electron-forge/maker-zip'
 
 const config: ForgeConfig = {
   packagerConfig: {
-    name: 'ProjectManager',
-    executableName: 'project-manager',
+    name: 'common-tools',
+    executableName: 'common-tools',
     asar: true,
     appCopyright: 'Copyright © 2026',
     extraResource: ['assets'],
   },
   makers: [
     new MakerSquirrel({
-      name: 'project-manager',
+      name: 'common-tools',
       authors: 'zhengrenfu',
-      description: 'Windows 桌面工具，用于管理多个项目的启动、停止、构建、SVN 更新等操作',
+      description: 'Windows 桌面工具箱，集成 Markdown 预览、PDF 转换等常用工具',
     }),
     new MakerZIP({}, ['win32']),
   ],

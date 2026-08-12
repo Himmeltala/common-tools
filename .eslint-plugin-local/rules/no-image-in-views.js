@@ -10,30 +10,18 @@
 import path from 'path'
 
 const ROOT = process.cwd()
-const IMAGE_EXTS = new Set([
-  '.png',
-  '.jpg',
-  '.jpeg',
-  '.gif',
-  '.svg',
-  '.webp',
-  '.bmp',
-  '.ico',
-])
+const IMAGE_EXTS = new Set(['.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp', '.bmp', '.ico'])
 const STATIC_IMAGE_PREFIX = '/static/image/'
 
 export default {
   meta: {
     type: 'problem',
     docs: {
-      description:
-        '禁止图片文件存放在 src/views/ 下，模板中图片路径必须在 /static/image/ 下',
+      description: '禁止图片文件存放在 src/views/ 下，模板中图片路径必须在 /static/image/ 下',
     },
     messages: {
-      fileInViews:
-        '图片文件不应放在 views 目录下，请移至 public/static/image/ 引入',
-      invalidImagePath:
-        '图片路径 "{{ path }}" 不在 /static/image/ 下，请移至 public/static/image/ 后更新路径',
+      fileInViews: '图片文件不应放在 views 目录下，请移至 public/static/image/ 引入',
+      invalidImagePath: '图片路径 "{{ path }}" 不在 /static/image/ 下，请移至 public/static/image/ 后更新路径',
     },
   },
 
@@ -130,10 +118,7 @@ export default {
     }
 
     function isAllowedPath(p) {
-      return (
-        p.startsWith(STATIC_IMAGE_PREFIX) ||
-        p.startsWith('/public' + STATIC_IMAGE_PREFIX)
-      )
+      return p.startsWith(STATIC_IMAGE_PREFIX) || p.startsWith('/public' + STATIC_IMAGE_PREFIX)
     }
   },
 }

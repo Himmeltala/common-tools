@@ -68,7 +68,7 @@ toolExecutors.register({
     }
 
     // 将 HTML 写入临时文件
-    const tmpDir = join(tmpdir(), 'toolbox-pdf')
+    const tmpDir = join(tmpdir(), 'common-tools-pdf')
     mkdirSync(tmpDir, { recursive: true })
     const htmlPath = join(tmpDir, `${fileName}.html`)
     writeFileSync(htmlPath, html, 'utf-8')

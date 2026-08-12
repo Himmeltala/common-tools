@@ -9,9 +9,6 @@
 <template>
   <div class="app-root" :class="themeClass">
     <div class="sidebar">
-      <div class="sidebar-header">
-        <span class="sidebar-title">常用工具箱</span>
-      </div>
       <el-menu
         :default-active="currentRoute"
         class="sidebar-menu"
@@ -29,11 +26,7 @@
               <el-icon><component :is="category.icon" /></el-icon>
               <span>{{ category.label }}</span>
             </template>
-            <el-menu-item
-              v-for="tool in category.tools"
-              :key="tool.id"
-              :index="`/tool/${category.id}/${tool.id}`"
-            >
+            <el-menu-item v-for="tool in category.tools" :key="tool.id" :index="`/tool/${category.id}/${tool.id}`">
               <el-icon><component :is="tool.icon" /></el-icon>
               <span>{{ tool.label }}</span>
             </el-menu-item>
@@ -55,16 +48,26 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { HomeFilled } from '@element-plus/icons-vue'
 import { toolRegistry } from '@/composables/useToolRegistry'
+import { useModal } from '@/composables/useModal'
+import SettingsModal from '@/modals/SettingsModal.vue'
 
 const theme = ref('dark')
 const themeClass = computed(() => `theme-${theme.value}`)
 const route = useRoute()
 const currentRoute = computed(() => route.path)
 
-/** 工具类别列表，从注册中心获取 */
+// 工具类别列表，从注册中心获取
 const categories = computed(() => toolRegistry.getAll())
 
-/** 默认展开的菜单项，所有类别均展开 */
+// 设置弹窗
+const settingsModal = useModal({ component: SettingsModal })
+
+// 打开设置弹窗
+function openSettings() {
+  settingsModal.open()
+}
+
+// 默认展开的菜单项，所有类别均展开
 const defaultOpeneds = computed(() => categories.value.map((c) => c.id))
 
 /**
@@ -102,8 +105,8 @@ function onUserActivity() {
 }
 
 onMounted(async () => {
-  const savedTheme = await window.electronAPI.invoke('settings:get', 'theme', 'dark')
-  theme.value = savedTheme
+  const savedTheme = await window.electronAPI.invoke('settings:get', 'theme')
+  theme.value = savedTheme || 'dark'
   applyTheme(theme.value)
 
   const appCleanups: (() => void)[] = []
@@ -111,6 +114,12 @@ onMounted(async () => {
     window.electronAPI.on('event:themeChanged', (newTheme: string) => {
       theme.value = newTheme
       applyTheme(newTheme)
+    }),
+  )
+  // 菜单事件
+  appCleanups.push(
+    window.electronAPI.on('menu:event', ({ action }: { action: string }) => {
+      if (action === 'settings') openSettings()
     }),
   )
 
@@ -173,15 +182,6 @@ body {
   top: 0;
   background: var(--el-bg-color-overlay);
   border-right: 1px solid var(--el-border-color);
-}
-.sidebar-header {
-  padding: 16px 20px 12px;
-  border-bottom: 1px solid var(--el-border-color-lighter);
-}
-.sidebar-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--el-text-color-primary);
 }
 .sidebar-menu {
   flex: 1;

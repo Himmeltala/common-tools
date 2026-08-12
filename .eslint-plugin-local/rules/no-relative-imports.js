@@ -51,19 +51,16 @@ export default {
   meta: {
     type: 'suggestion',
     docs: {
-      description:
-        '禁止相对路径导入（./ 和 ../），强制使用 @/ 或 @electron/ 路径别名',
+      description: '禁止相对路径导入（./ 和 ../），强制使用 @/ 或 @electron/ 路径别名',
     },
     messages: {
-      useAlias:
-        '相对导入 "{{ importPath }}" 应使用路径别名 "{{ suggestion }}"',
+      useAlias: '相对导入 "{{ importPath }}" 应使用路径别名 "{{ suggestion }}"',
     },
   },
 
   create(context) {
     const f = context.filename || ''
-    if (!f.endsWith('.vue') && !f.endsWith('.ts') && !f.endsWith('.js'))
-      return {}
+    if (!f.endsWith('.vue') && !f.endsWith('.ts') && !f.endsWith('.js')) return {}
 
     return {
       ImportDeclaration(node) {
@@ -71,8 +68,7 @@ export default {
         if (!importPath || typeof importPath !== 'string') return
 
         // 仅处理相对路径
-        if (!importPath.startsWith('./') && !importPath.startsWith('../'))
-          return
+        if (!importPath.startsWith('./') && !importPath.startsWith('../')) return
 
         const resolved = resolveRelative(f, importPath)
         if (!resolved) return

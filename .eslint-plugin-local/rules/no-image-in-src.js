@@ -11,16 +11,7 @@ import path from 'path'
 import fs from 'fs'
 
 const ROOT = process.cwd()
-const IMAGE_EXTS = new Set([
-  '.png',
-  '.jpg',
-  '.jpeg',
-  '.gif',
-  '.svg',
-  '.webp',
-  '.bmp',
-  '.ico',
-])
+const IMAGE_EXTS = new Set(['.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp', '.bmp', '.ico'])
 
 let scanned = false
 
@@ -28,12 +19,10 @@ export default {
   meta: {
     type: 'problem',
     docs: {
-      description:
-        '禁止 src/ 目录下存放图片文件，必须放在项目根目录 /public/static/image/',
+      description: '禁止 src/ 目录下存放图片文件，必须放在项目根目录 /public/static/image/',
     },
     messages: {
-      imageInSrc:
-        'src/ 目录下不允许存放图片文件 "{{ name }}"（{{ ext }}），请移至 /public/static/image/',
+      imageInSrc: 'src/ 目录下不允许存放图片文件 "{{ name }}"（{{ ext }}），请移至 /public/static/image/',
     },
   },
 
