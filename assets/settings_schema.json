@@ -1,0 +1,52 @@
+[
+  {
+    "key": "interface",
+    "label": "界面",
+    "groups": [
+      {
+        "label": "主题",
+        "settings": [
+          {
+            "key": "theme",
+            "label": "界面主题",
+            "type": "combo",
+            "default": "dark",
+            "options": [
+              { "label": "暗色主题", "value": "dark" },
+              { "label": "亮色主题", "value": "light" }
+            ],
+            "description": "选择程序整体外观主题，暗色护眼、亮色清晰"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "key": "notifications",
+    "label": "通知",
+    "groups": [
+      {
+        "label": "通用",
+        "settings": [
+          {
+            "key": "notifications.enabled",
+            "label": "启用通知",
+            "type": "checkbox",
+            "default": true,
+            "description": "关闭后所有通知类型都不会显示"
+          },
+          {
+            "key": "notifications.max_count",
+            "label": "最大通知数",
+            "type": "spinbox",
+            "default": 100,
+            "min": 10,
+            "max": 1000,
+            "step": 10,
+            "description": "超出上限后自动删除最旧的通知"
+          }
+        ]
+      }
+    ]
+  }
+]

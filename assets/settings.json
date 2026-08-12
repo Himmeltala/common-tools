@@ -1,0 +1,7 @@
+{
+  "theme": "dark",
+  "notifications": {
+    "enabled": true,
+    "max_count": 100
+  }
+}
