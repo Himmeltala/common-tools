@@ -26,17 +26,17 @@
 
 ## 技术栈
 
-| 技术 | 用途 |
-| --- | --- |
-| Electron | 桌面应用框架 |
-| Vue 3 | 前端 UI 框架 |
-| Vite | 构建工具 |
-| TypeScript | 语言 |
-| Element Plus | UI 组件库 |
-| Pinia | 状态管理 |
-| Vue Router | 路由 |
-| markdown-it | Markdown 解析 |
-| highlight.js | 代码语法高亮 |
+| 技术         | 用途          |
+| ------------ | ------------- |
+| Electron     | 桌面应用框架  |
+| Vue 3        | 前端 UI 框架  |
+| Vite         | 构建工具      |
+| TypeScript   | 语言          |
+| Element Plus | UI 组件库     |
+| Pinia        | 状态管理      |
+| Vue Router   | 路由          |
+| markdown-it  | Markdown 解析 |
+| highlight.js | 代码语法高亮  |
 
 ## 项目结构
 

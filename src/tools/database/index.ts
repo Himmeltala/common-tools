@@ -22,7 +22,7 @@ export const databaseCategory: ToolCategory = {
       description: '将 MySQL 建表语句转换为虚谷数据库 DDL',
       icon: 'Switch',
       component: MysqlDdlToXugu,
-      executors: ['run-python'],
+      executors: ['mysql-ddl-to-xugu'],
     },
   ],
 }

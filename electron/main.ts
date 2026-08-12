@@ -12,6 +12,8 @@ import { createStore, storeGet, storeSet, storeDelete, storeKeys } from '@electr
 import type { Store } from '@electron/services/core/store.service'
 import { toolExecutors, type ToolExecutorContext } from '@electron/services/tool-executor.service'
 import '@electron/services/python-executor.service'
+import '@electron/services/markdown'
+import '@electron/services/database'
 import { setupSysNotificationIpc } from '@electron/services/sys-notification.service'
 // #endregion
 
@@ -125,11 +127,6 @@ function registerIpc(): void {
     }
   })
 
-  // 工具输出日志
-  ipcMain.handle('tool:log', (_e, type: string, text: string) => {
-    mainWindow?.webContents.send('event:output', { type, text })
-  })
-
   // 设置
   ipcMain.handle('settings:get', (_e, key: string, defaultVal?: any) => settings.get(key, defaultVal))
   ipcMain.handle('settings:set', (_e, key: string, value: any) => {
@@ -177,9 +174,6 @@ function registerIpc(): void {
       return result.canceled ? null : result.filePath
     },
   )
-  ipcMain.handle('system:log', (_e, type: string, text: string) => {
-    mainWindow?.webContents.send('event:output', { type, text })
-  })
 }
 // #endregion
 

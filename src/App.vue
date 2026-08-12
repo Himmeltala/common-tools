@@ -2,9 +2,9 @@
  * @Author: zhengrenfu
  * @Date: 2026-07-14
  * @LastEditors: zhengrenfu
- * @LastEditTime: 2026-08-11
+ * @LastEditTime: 2026-08-12
  * @FilePath: \src\App.vue
- * @Description: 根组件，管理主题、侧边栏路由和 IPC 事件
+ * @Description: 根组件，管理主题、侧边栏路由、IPC 事件和全局日志面板
 -->
 <template>
   <div class="app-root" :class="themeClass">
@@ -39,6 +39,8 @@
       <div class="main-area">
         <router-view />
       </div>
+
+      <GlobalLogPanel />
     </div>
   </div>
 </template>
@@ -48,13 +50,16 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { HomeFilled } from '@element-plus/icons-vue'
 import { toolRegistry } from '@/composables/useToolRegistry'
+import { useLogStore } from '@/stores/log.store'
 import { useModal } from '@/composables/useModal'
+import GlobalLogPanel from '@/components/GlobalLogPanel.vue'
 import SettingsModal from '@/modals/SettingsModal.vue'
 
 const theme = ref('dark')
 const themeClass = computed(() => `theme-${theme.value}`)
 const route = useRoute()
 const currentRoute = computed(() => route.path)
+const logStore = useLogStore()
 
 // 工具类别列表，从注册中心获取
 const categories = computed(() => toolRegistry.getAll())
@@ -105,6 +110,8 @@ function onUserActivity() {
 }
 
 onMounted(async () => {
+  logStore.loadSettings()
+
   const savedTheme = await window.electronAPI.invoke('settings:get', 'theme')
   theme.value = savedTheme || 'dark'
   applyTheme(theme.value)
@@ -122,6 +129,44 @@ onMounted(async () => {
       if (action === 'settings') openSettings()
     }),
   )
+
+  // 全局异常自动送入日志面板
+  const origConsoleError = console.error
+  console.error = (...args: unknown[]) => {
+    origConsoleError.apply(console, args)
+    logStore.addLog(
+      'error',
+      args.map((a) => (a instanceof Error ? a.message : typeof a === 'string' ? a : JSON.stringify(a))).join(' '),
+    )
+  }
+
+  const origConsoleWarn = console.warn
+  console.warn = (...args: unknown[]) => {
+    origConsoleWarn.apply(console, args)
+    logStore.addLog(
+      'warning',
+      args
+        .map((a) => {
+          if (typeof a === 'string') return a
+          try {
+            return JSON.stringify(a)
+          } catch {
+            return String(a)
+          }
+        })
+        .join(' '),
+    )
+  }
+
+  window.onerror = (_msg, _source, _lineno, _colno, err) => {
+    const msg = err?.message || String(_msg)
+    logStore.addLog('error', `[Runtime] ${msg}`)
+  }
+
+  window.addEventListener('unhandledrejection', (e) => {
+    const msg = e.reason instanceof Error ? e.reason.message : String(e.reason)
+    logStore.addLog('error', `[Promise] ${msg}`)
+  })
 
   document.addEventListener('mousemove', onUserActivity, { passive: true })
   document.addEventListener('mousedown', onUserActivity, { passive: true })
@@ -152,6 +197,17 @@ onUnmounted(() => {
 }
 :root {
   --app-sidebar-width: 220px;
+  --app-space-1: 4px;
+  --app-space-2: 8px;
+  --app-space-3: 12px;
+  --app-space-4: 16px;
+  --app-space-5: 20px;
+  --app-space-6: 24px;
+  --app-padding-toolbar: var(--app-space-1) var(--app-space-2);
+  --app-padding-compact: 2px var(--app-space-2);
+  --app-gap-toolbar: var(--app-space-1);
+  --app-gap-section: var(--app-space-3);
+  --app-gap-group: var(--app-space-5);
 }
 html,
 body,
