@@ -10,6 +10,7 @@
 import { toolRegistry } from '@/composables/useToolRegistry'
 import { markdownCategory } from '@/tools/markdown'
 import { databaseCategory } from '@/tools/database'
+import { excelCategory } from '@/tools/excel'
 
 /**
  * 注册所有内置工具类别
@@ -17,4 +18,5 @@ import { databaseCategory } from '@/tools/database'
 export function registerBuiltinTools(): void {
   toolRegistry.register(markdownCategory)
   toolRegistry.register(databaseCategory)
+  toolRegistry.register(excelCategory)
 }
