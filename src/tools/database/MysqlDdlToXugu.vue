@@ -38,18 +38,24 @@
           在左侧粘贴 MySQL DDL 后自动显示转换结果
         </div>
         <div v-else-if="parseError" class="error-text">{{ parseError }}</div>
-        <pre v-else class="code-output"><code>{{ outputDdl }}</code></pre>
+        <template v-else>
+          <pre class="code-output"><code>{{ displayDdl.text }}</code></pre>
+          <div v-if="displayDdl.truncated" class="truncate-hint">
+            内容过长，仅显示前 {{ MAX_DISPLAY_LINES }} 行（共 {{ displayDdl.totalLines }} 行），复制与保存不受影响
+          </div>
+        </template>
       </div>
     </template>
   </ToolLayout>
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { FolderOpened, RefreshRight, Download } from '@element-plus/icons-vue'
 import type { UploadFile } from 'element-plus'
 import ToolLayout from '@/components/ToolLayout.vue'
 import { useLogStore } from '@/stores/log.store'
+import { MAX_DISPLAY_LINES, truncateLines } from '@/utils/text'
 
 const logStore = useLogStore()
 
@@ -58,6 +64,9 @@ const outputDdl = ref('')
 const parseError = ref('')
 const currentFile = ref('')
 const converting = ref(false)
+
+// 界面仅渲染前 200 行，完整结果保留用于复制与保存
+const displayDdl = computed(() => truncateLines(outputDdl.value))
 
 let debounceTimer: ReturnType<typeof setTimeout> | null = null
 

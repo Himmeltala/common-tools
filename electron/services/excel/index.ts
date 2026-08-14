@@ -26,22 +26,37 @@ function maskText(text: string): string {
 }
 
 /**
+ * 从工作簿字节中读取指定工作表的二维文本数据
+ * @param bytes Excel 文件字节
+ * @param sheetName 目标工作表名称，未指定时读取第一个工作表
+ * @returns 工作表名称列表、实际读取的工作表名与二维数据，解析失败返回 null
+ */
+function readSheet(
+  bytes: Uint8Array,
+  sheetName?: string,
+): { sheetNames: string[]; sheetName: string; rows: string[][] } | null {
+  try {
+    const workbook = XLSX.read(bytes, { type: 'array' })
+    if (!workbook.SheetNames.length) return null
+    const target = sheetName && workbook.SheetNames.includes(sheetName) ? sheetName : workbook.SheetNames[0]
+    const sheet = workbook.Sheets[target]
+    // raw: false 时返回单元格的格式化文本，日期与数字均按显示内容处理
+    const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false, defval: '' }) as string[][]
+    return { sheetNames: workbook.SheetNames, sheetName: target, rows }
+  } catch {
+    return null
+  }
+}
+
+/**
  * 从工作簿字节中读取第一个工作表的二维文本数据
  * @param bytes Excel 文件字节
  * @returns 工作表名称与二维数据，解析失败返回 null
  */
 function readFirstSheet(bytes: Uint8Array): { sheetName: string; rows: string[][] } | null {
-  try {
-    const workbook = XLSX.read(bytes, { type: 'array' })
-    const sheetName = workbook.SheetNames[0]
-    if (!sheetName) return null
-    const sheet = workbook.Sheets[sheetName]
-    // raw: false 时返回单元格的格式化文本，日期与数字均按显示内容处理
-    const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false, defval: '' }) as string[][]
-    return { sheetName, rows }
-  } catch {
-    return null
-  }
+  const parsed = readSheet(bytes)
+  if (!parsed) return null
+  return { sheetName: parsed.sheetName, rows: parsed.rows }
 }
 
 /**
@@ -52,6 +67,31 @@ function readFirstSheet(bytes: Uint8Array): { sheetName: string; rows: string[][
  */
 function maskRows(rows: string[][], skipRows: number): string[][] {
   return rows.map((row, index) => (index < skipRows ? row : row.map(maskText)))
+}
+
+/**
+ * 将单个单元格值格式化为 CSV 字段
+ * 内容包含分隔符、双引号或换行时用双引号包裹，并转义内部双引号
+ * @param value 单元格值
+ * @param sep 分隔符
+ * @returns CSV 字段文本
+ */
+function toCsvCell(value: unknown, sep: string): string {
+  const s = value == null ? '' : String(value)
+  if (s.includes(sep) || s.includes('"') || s.includes('\n') || s.includes('\r')) {
+    return '"' + s.replace(/"/g, '""') + '"'
+  }
+  return s
+}
+
+/**
+ * 将二维数据转为 CSV 文本
+ * @param rows 二维数据
+ * @param sep 分隔符
+ * @returns CSV 文本
+ */
+function rowsToCsv(rows: string[][], sep: string): string {
+  return rows.map((row) => row.map((c) => toCsvCell(c, sep)).join(sep)).join('\n')
 }
 
 // 注册 Excel 数据脱敏执行器
@@ -96,6 +136,46 @@ toolExecutors.register({
       }
     } catch (e: any) {
       return { success: false, error: e.message || '脱敏处理失败' }
+    }
+  },
+})
+
+// 注册 Excel 转 CSV 执行器
+toolExecutors.register({
+  id: 'excel-to-csv',
+  async execute(params: Record<string, unknown>): Promise<ToolExecuteResult> {
+    const bytes = params.bytes as Uint8Array
+    const sheetName = params.sheetName as string | undefined
+    const sep = (params.sep as string) || ','
+
+    if (!bytes || bytes.length === 0) {
+      return { success: false, error: '未提供 Excel 文件内容' }
+    }
+
+    const parsed = readSheet(bytes, sheetName)
+    if (!parsed) {
+      return { success: false, error: 'Excel 文件解析失败，请确认文件格式正确' }
+    }
+
+    try {
+      const csv = rowsToCsv(parsed.rows, sep)
+      const totalRows = parsed.rows.length
+      const totalCols = parsed.rows.reduce((max, row) => Math.max(max, row.length), 0)
+
+      return {
+        success: true,
+        data: {
+          sheetNames: parsed.sheetNames,
+          sheetName: parsed.sheetName,
+          csv,
+          previewRows: parsed.rows.slice(0, PREVIEW_MAX_ROWS),
+          totalRows,
+          totalCols,
+          truncated: totalRows > PREVIEW_MAX_ROWS,
+        },
+      }
+    } catch (e: any) {
+      return { success: false, error: e.message || '转换失败' }
     }
   },
 })

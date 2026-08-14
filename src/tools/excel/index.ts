@@ -9,6 +9,7 @@
 
 import type { ToolCategory } from '@/types/tool'
 import DataMasking from '@/tools/excel/DataMasking.vue'
+import ExcelToCsv from '@/tools/excel/ExcelToCsv.vue'
 
 // Excel 工具类别
 export const excelCategory: ToolCategory = {
@@ -23,6 +24,14 @@ export const excelCategory: ToolCategory = {
       icon: 'Hide',
       component: DataMasking,
       executors: ['excel-mask'],
+    },
+    {
+      id: 'excel-to-csv',
+      label: 'Excel 转 CSV',
+      description: '将 Excel 工作表转换为 CSV 文本，支持选择工作表与分隔符',
+      icon: 'Files',
+      component: ExcelToCsv,
+      executors: ['excel-to-csv'],
     },
   ],
 }

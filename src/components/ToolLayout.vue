@@ -150,6 +150,11 @@ async function handleCopy() {
   font-size: 13px;
   white-space: pre-wrap;
 }
+:deep(.truncate-hint) {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--el-color-warning);
+}
 :deep(.code-output) {
   margin: 0;
   font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
