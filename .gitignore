@@ -9,3 +9,5 @@ release
 package-lock.json
 pnpm-lock.yaml
 out
+.pnpm-store
+.pnpm-debug.log

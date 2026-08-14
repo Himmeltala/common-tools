@@ -15,6 +15,7 @@ import '@electron/services/python-executor.service'
 import '@electron/services/markdown'
 import '@electron/services/database'
 import '@electron/services/excel'
+import '@electron/services/image'
 import { setupSysNotificationIpc } from '@electron/services/sys-notification.service'
 // #endregion
 

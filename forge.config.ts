@@ -6,7 +6,9 @@ const config: ForgeConfig = {
   packagerConfig: {
     name: 'common-tools',
     executableName: 'common-tools',
-    asar: true,
+    asar: {
+      unpack: '**/node_modules/ffmpeg-static/**',
+    },
     appCopyright: 'Copyright © 2026',
     extraResource: ['assets'],
   },
