@@ -1,0 +1,9 @@
+allowBuilds:
+  '@parcel/watcher': true
+  electron-winstaller: true
+  electron: true
+  '@electron/get': true
+nodeLinker: hoisted
+overrides:
+  yauzl: 3.4.0
+  '@electron/node-gyp': 10.2.0-electron.1
