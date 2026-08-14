@@ -101,7 +101,19 @@ export async function convertImage(
   try {
     writeFileSync(inputPath, Buffer.from(inputBytes))
 
-    const args = ['-y', '-i', inputPath, '-frames:v', '1', ...buildQualityArgs(targetFormat, quality), outputPath]
+    // ICO 格式最大支持 256x256，超出时等比缩放
+    const scaleFilter =
+      targetFormat.toLowerCase() === 'ico' ? ['-vf', 'scale=256:256:force_original_aspect_ratio=decrease'] : []
+    const args = [
+      '-y',
+      '-i',
+      inputPath,
+      '-frames:v',
+      '1',
+      ...scaleFilter,
+      ...buildQualityArgs(targetFormat, quality),
+      outputPath,
+    ]
     const { code, stderr } = await runFfmpeg(args)
 
     if (code !== 0) {

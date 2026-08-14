@@ -40,9 +40,7 @@
     </template>
     <template #left>
       <div class="result-area">
-        <div v-if="!previewRows.length && !parseError" class="placeholder-text">
-          打开 Excel 文件后自动显示数据预览
-        </div>
+        <div v-if="!previewRows.length && !parseError" class="placeholder-text">打开 Excel 文件后自动显示数据预览</div>
         <div v-else-if="parseError" class="error-text">{{ parseError }}</div>
         <el-table v-else v-loading="converting" :data="tableData" size="small" border stripe class="data-table">
           <el-table-column
@@ -54,9 +52,7 @@
             show-overflow-tooltip
           />
         </el-table>
-        <div v-if="truncated" class="truncate-hint">
-          数据行数较多，仅预览前 {{ PREVIEW_LIMIT }} 行，导出不受影响
-        </div>
+        <div v-if="truncated" class="truncate-hint">数据行数较多，仅预览前 {{ PREVIEW_LIMIT }} 行，导出不受影响</div>
       </div>
     </template>
 
@@ -129,7 +125,7 @@ const tableData = computed(() =>
 const displayCsv = computed(() => truncateLines(csvText.value))
 
 /**
- * 分隔符选项值为字符串 '\t'（反斜杠+t），转为真实制表符
+ * 分隔符选项值为制表符转义文本，转换为真实制表符
  */
 function actualSeparator(): string {
   return separator.value === '\\t' ? '\t' : separator.value

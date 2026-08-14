@@ -7,7 +7,7 @@
  * @Description: 文本处理公共函数，用于限制界面渲染的文本量、避免大量文本导致卡顿
  */
 
-/** 界面最多展示的文本行数，超出部分不渲染以保证性能 */
+// 界面最多展示的文本行数，超出部分不渲染以保证性能
 export const MAX_DISPLAY_LINES = 200
 
 export interface TruncateLinesResult {
@@ -21,7 +21,7 @@ export interface TruncateLinesResult {
 
 /**
  * 将文本截断到前 maxLines 行
- * 用于限制界面展示内容：完整文本仍保留在内存中供复制/保存使用，仅渲染前若干行
+ * 界面仅渲染前若干行，完整文本仍保留在内存中供复制与保存使用
  * @param text 原始文本
  * @param maxLines 最大显示行数
  * @returns 截断结果

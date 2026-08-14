@@ -44,7 +44,9 @@
     </template>
 
     <template #left-header>
-      <span>原图<span v-if="inputInfo">（{{ inputInfo }}）</span></span>
+      <span
+        >原图<span v-if="inputInfo">（{{ inputInfo }}）</span></span
+      >
     </template>
     <template #left>
       <div class="image-area" v-loading="converting">
@@ -55,7 +57,9 @@
     </template>
 
     <template #right-header>
-      <span>转换结果<span v-if="outputInfo">（{{ outputInfo }}）</span></span>
+      <span
+        >转换结果<span v-if="outputInfo">（{{ outputInfo }}）</span></span
+      >
     </template>
     <template #right>
       <div class="image-area" v-loading="converting">
@@ -288,7 +292,8 @@ async function saveAs() {
       { name: `${targetFormat.value.toUpperCase()} 图片`, extensions: [targetFormat.value] },
     ])
     if (!savePath) return
-    await window.electronAPI.invoke('tool:saveFile', savePath, outputBytes.value)
+    // ref 数组为 reactive Proxy，不可直接过 IPC 序列化，先转为原始数组
+    await window.electronAPI.invoke('tool:saveFile', savePath, Array.from(outputBytes.value))
     logStore.addLog('success', '图片已保存')
   } catch (e: any) {
     logStore.addLog('error', '保存失败: ' + (e.message || '未知错误'))
