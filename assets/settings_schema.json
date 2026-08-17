@@ -56,5 +56,23 @@
         ]
       }
     ]
+  },
+  {
+    "key": "mermaid",
+    "label": "Mermaid 工具",
+    "groups": [
+      {
+        "label": "Mermaid 预览",
+        "settings": [
+          {
+            "key": "mermaid.preview.filenameTemplate",
+            "label": "导出文件名模板",
+            "type": "text",
+            "default": "{{year}}{{month}}{{day}}-{{hour}}{{minute}}{{second}}",
+            "description": "导出文件的命名模板，支持变量插值：{{year}} 年、{{month}} 月、{{day}} 日、{{hour}} 时、{{minute}} 分、{{second}} 秒"
+          }
+        ]
+      }
+    ]
   }
 ]

@@ -4,6 +4,7 @@ allowBuilds:
   electron: true
   '@electron/get': true
   ffmpeg-static: true
+  core-js: false
 nodeLinker: hoisted
 overrides:
   yauzl: 3.4.0

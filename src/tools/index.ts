@@ -12,6 +12,7 @@ import { markdownCategory } from '@/tools/markdown'
 import { databaseCategory } from '@/tools/database'
 import { excelCategory } from '@/tools/excel'
 import { imageCategory } from '@/tools/image'
+import { mermaidCategory } from '@/tools/mermaid'
 
 /**
  * 注册所有内置工具类别
@@ -21,4 +22,5 @@ export function registerBuiltinTools(): void {
   toolRegistry.register(databaseCategory)
   toolRegistry.register(excelCategory)
   toolRegistry.register(imageCategory)
+  toolRegistry.register(mermaidCategory)
 }
