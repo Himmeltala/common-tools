@@ -2,8 +2,8 @@
  * @Author: zhengrenfu
  * @Date: 2026-08-17
  * @LastEditors: zhengrenfu
- * @LastEditTime: 2026-08-17
- * @FilePath: \src\tools\mermaid\MermaidPreview.vue
+ * @LastEditTime: 2026-08-21 09:49:02
+ * @FilePath: /src/tools/mermaid/MermaidPreview.vue
  * @Description: Mermaid 图表实时预览工具，支持主题切换、缩放、拖拽平移、导出图片和 PDF
 -->
 <template>
@@ -18,6 +18,11 @@
       <span class="toolbar-label">主题：</span>
       <el-select v-model="activeTheme" size="small" style="width: 110px">
         <el-option v-for="t in themes" :key="t.id" :label="t.label" :value="t.id" />
+      </el-select>
+      <el-divider direction="vertical" />
+      <span class="toolbar-label">背景：</span>
+      <el-select v-model="activeBg" size="small" style="width: 130px">
+        <el-option v-for="b in bgOptions" :key="b.id" :label="b.label" :value="b.id" />
       </el-select>
       <el-divider direction="vertical" />
       <el-button :icon="Download" size="small" :disabled="!renderedSvg" @click="exportSvg">导出 SVG</el-button>
@@ -46,6 +51,7 @@
         ref="previewRef"
         class="mermaid-preview"
         :class="{ 'is-dark-theme': isDarkTheme }"
+        :style="previewBgStyle"
         @mousedown="onMouseDown"
         @mousemove="onMouseMove"
         @mouseup="onMouseUp"
@@ -55,8 +61,10 @@
       >
         <div v-if="!code.trim() && !renderError" class="placeholder-text">在左侧输入 Mermaid 代码后实时预览</div>
         <div v-else-if="renderError" class="error-text">{{ renderError }}</div>
-        <div v-else class="mermaid-viewport" :style="viewportStyle">
-          <div class="mermaid-svg-container" v-html="renderedSvg" />
+        <div v-else class="mermaid-viewport">
+          <div class="mermaid-transform" :style="viewportStyle">
+            <div class="mermaid-svg-container" v-html="renderedSvg" />
+          </div>
         </div>
       </div>
     </template>
@@ -67,6 +75,7 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { ZoomIn, ZoomOut, RefreshRight, Download, PictureFilled, Document, DocumentCopy } from '@element-plus/icons-vue'
 import mermaid from 'mermaid'
+import type { MermaidConfig } from 'mermaid'
 import jsPDF from 'jspdf'
 import ToolLayout from '@/components/ToolLayout.vue'
 import { useLogStore } from '@/stores/log.store'
@@ -74,7 +83,16 @@ import { useLogStore } from '@/stores/log.store'
 const logStore = useLogStore()
 
 // 预设主题定义
-type MermaidThemeName = 'default' | 'dark' | 'forest' | 'neutral' | 'neo' | 'neo-dark' | 'redux' | 'redux-dark'
+type MermaidThemeName =
+  | 'default'
+  | 'basic'
+  | 'dark'
+  | 'forest'
+  | 'neutral'
+  | 'neo'
+  | 'neo-dark'
+  | 'redux'
+  | 'redux-dark'
 
 interface MermaidTheme {
   id: MermaidThemeName
@@ -83,6 +101,7 @@ interface MermaidTheme {
 
 const themes: MermaidTheme[] = [
   { id: 'default', label: '默认' },
+  { id: 'basic', label: '基础' },
   { id: 'dark', label: '暗色' },
   { id: 'forest', label: '森林' },
   { id: 'neutral', label: '中性' },
@@ -91,6 +110,73 @@ const themes: MermaidTheme[] = [
   { id: 'redux', label: 'Redux' },
   { id: 'redux-dark', label: 'Redux 暗色' },
 ]
+
+// 主题对应 mermaid 配置：内置主题直接映射，自定义主题基于 base 主题定制 themeVariables
+interface MermaidThemeConfig {
+  theme: NonNullable<MermaidConfig['theme']>
+  themeVariables?: Record<string, string>
+}
+
+const themeConfigs: Record<MermaidThemeName, MermaidThemeConfig> = {
+  default: { theme: 'default' },
+  dark: { theme: 'dark' },
+  forest: { theme: 'forest' },
+  neutral: { theme: 'neutral' },
+  neo: { theme: 'neo' },
+  'neo-dark': { theme: 'neo-dark' },
+  redux: { theme: 'redux' },
+  'redux-dark': { theme: 'redux-dark' },
+  // 基础主题：白底节点、浅灰边框(#cccccc)、深灰文字(#333333)、灰线条(#696969)、深灰箭头(#666666)
+  basic: {
+    theme: 'base',
+    themeVariables: {
+      primaryColor: '#ffffff',
+      secondaryColor: '#ffffff',
+      tertiaryColor: '#ffffff',
+      primaryTextColor: '#333333',
+      secondaryTextColor: '#333333',
+      tertiaryTextColor: '#333333',
+      primaryBorderColor: '#cccccc',
+      secondaryBorderColor: '#cccccc',
+      tertiaryBorderColor: '#cccccc',
+      lineColor: '#696969',
+      arrowheadColor: '#666666',
+    },
+  },
+}
+
+// 预览背景选项
+interface BgOption {
+  id: string
+  label: string
+}
+
+const bgOptions: BgOption[] = [
+  { id: 'transparent', label: '默认（透明）' },
+  { id: 'white', label: '白色' },
+  { id: 'gray', label: '灰色' },
+  { id: 'blue', label: '蓝色' },
+  { id: 'green', label: '绿色' },
+  { id: 'dots', label: '圆点' },
+  { id: 'grid', label: '网格' },
+]
+
+const activeBg = ref('transparent')
+
+// 各背景对应的 CSS background 值（transparent 不设置，跟随主题背景）
+const bgStyles: Record<string, string> = {
+  white: '#ffffff',
+  gray: '#e0e0e0',
+  blue: '#e6f2ff',
+  green: '#e6f7e6',
+  dots: 'radial-gradient(circle, #cccccc 1px, transparent 1px) 0 0 / 20px 20px, #ffffff',
+  grid: 'linear-gradient(#e5e5e5 1px, transparent 1px) 0 0 / 20px 20px, linear-gradient(90deg, #e5e5e5 1px, transparent 1px) 0 0 / 20px 20px, #ffffff',
+}
+
+const previewBgStyle = computed(() => {
+  const bg = bgStyles[activeBg.value]
+  return bg ? { background: bg } : {}
+})
 
 const code = ref('')
 const renderedSvg = ref('')
@@ -126,9 +212,29 @@ const viewportStyle = computed(() => ({
 
 // mermaid 初始化配置
 onMounted(async () => {
+  // 加载上次选择的主题
+  try {
+    const savedTheme = await window.electronAPI.invoke('store:get', 'mermaid.preview.theme')
+    if (savedTheme && themes.some((t) => t.id === savedTheme)) {
+      activeTheme.value = savedTheme
+    }
+  } catch {
+    // 使用默认主题
+  }
+  // 加载上次选择的背景
+  try {
+    const savedBg = await window.electronAPI.invoke('store:get', 'mermaid.preview.background')
+    if (savedBg && bgOptions.some((b) => b.id === savedBg)) {
+      activeBg.value = savedBg
+    }
+  } catch {
+    // 使用默认背景
+  }
+  const themeConfig = themeConfigs[activeTheme.value]
   mermaid.initialize({
     startOnLoad: false,
-    theme: activeTheme.value,
+    theme: themeConfig.theme,
+    themeVariables: themeConfig.themeVariables,
     securityLevel: 'loose',
   })
   // 加载导出文件名模板配置
@@ -170,14 +276,27 @@ watch(code, () => {
   scheduleRender()
 })
 
-// 主题切换时重新渲染
+// 主题切换时重新渲染并持久化选择
 watch(activeTheme, (newTheme) => {
+  const themeConfig = themeConfigs[newTheme]
   mermaid.initialize({
     startOnLoad: false,
-    theme: newTheme,
+    theme: themeConfig.theme,
+    themeVariables: themeConfig.themeVariables,
     securityLevel: 'loose',
   })
   scheduleRender()
+  // 记录上次选择的主题，下次打开时恢复
+  window.electronAPI
+    .invoke('store:set', 'mermaid.preview.theme', newTheme)
+    .catch(() => {})
+})
+
+// 背景切换时持久化选择
+watch(activeBg, (newBg) => {
+  window.electronAPI
+    .invoke('store:set', 'mermaid.preview.background', newBg)
+    .catch(() => {})
 })
 
 function scheduleRender() {
@@ -494,6 +613,10 @@ async function copyToClipboard() {
   width: 100%;
   height: 100%;
   overflow: auto;
+}
+.mermaid-transform {
+  width: 100%;
+  height: 100%;
 }
 .mermaid-svg-container {
   display: inline-block;
