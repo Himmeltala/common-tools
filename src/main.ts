@@ -2,8 +2,8 @@
  * @Author: zhengrenfu
  * @Date: 2026-07-14
  * @LastEditors: zhengrenfu
- * @LastEditTime: 2026-08-12
- * @FilePath: \src\main.ts
+ * @LastEditTime: 2026-08-27 09:00:14
+ * @FilePath: /src/main.ts
  * @Description: 应用入口，挂载 Vue 实例、注册插件和全局错误处理
  */
 import { createApp } from 'vue'

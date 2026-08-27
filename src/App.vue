@@ -2,19 +2,20 @@
  * @Author: zhengrenfu
  * @Date: 2026-07-14
  * @LastEditors: zhengrenfu
- * @LastEditTime: 2026-08-12
+ * @LastEditTime: 2026-08-27
  * @FilePath: \src\App.vue
  * @Description: 根组件，管理主题、侧边栏路由、IPC 事件和全局日志面板
 -->
 <template>
   <div class="app-root" :class="themeClass">
-    <div class="sidebar">
+    <div class="sidebar" :style="{ width: sidebarWidth + 'px' }">
       <el-menu
         :default-active="currentRoute"
         class="sidebar-menu"
         :collapse-transition="false"
         router
         :default-openeds="defaultOpeneds"
+        size="small"
       >
         <el-menu-item index="/">
           <el-icon><HomeFilled /></el-icon>
@@ -33,6 +34,7 @@
           </el-sub-menu>
         </template>
       </el-menu>
+      <div class="sidebar-resizer" @mousedown="onResizeMouseDown" @dblclick="onResizeDblClick"></div>
     </div>
 
     <div class="content-col">
@@ -52,6 +54,7 @@ import { HomeFilled } from '@element-plus/icons-vue'
 import { toolRegistry } from '@/composables/useToolRegistry'
 import { useLogStore } from '@/stores/log.store'
 import { useModal } from '@/composables/useModal'
+import { useResizePanel } from '@/composables/useResizePanel'
 import GlobalLogPanel from '@/components/GlobalLogPanel.vue'
 import SettingsModal from '@/modals/SettingsModal.vue'
 
@@ -60,6 +63,15 @@ const themeClass = computed(() => `theme-${theme.value}`)
 const route = useRoute()
 const currentRoute = computed(() => route.path)
 const logStore = useLogStore()
+
+// 侧边栏拖拽调整宽度
+const { panelWidth: sidebarWidth, onResizeMouseDown, onResizeDblClick } = useResizePanel({
+  defaultWidth: 220,
+  minWidth: 180,
+  maxWidth: 400,
+  loadWidth: () => window.electronAPI.invoke('store:get', 'sidebarWidth'),
+  saveWidth: (width) => window.electronAPI.invoke('store:set', 'sidebarWidth', width),
+})
 
 // 工具类别列表，从注册中心获取
 const categories = computed(() => toolRegistry.getAll())
@@ -229,8 +241,7 @@ body {
   background: var(--el-bg-color);
 }
 .sidebar {
-  width: var(--app-sidebar-width);
-  min-width: var(--app-sidebar-width);
+  min-width: 180px;
   display: flex;
   flex-direction: column;
   height: 100vh;
@@ -238,11 +249,25 @@ body {
   top: 0;
   background: var(--el-bg-color-overlay);
   border-right: 1px solid var(--el-border-color);
+  position: relative;
 }
 .sidebar-menu {
   flex: 1;
   border-right: none;
   overflow-y: auto;
+}
+.sidebar-resizer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 4px;
+  height: 100%;
+  cursor: col-resize;
+  background: transparent;
+  transition: background-color 0.2s;
+}
+.sidebar-resizer:hover {
+  background: var(--el-color-primary);
 }
 .content-col {
   flex: 1;
