@@ -20,7 +20,7 @@ export const excelCategory: ToolCategory = {
     {
       id: 'data-masking',
       label: '数据脱敏',
-      description: '保留单元格首尾字符、中间替换为星号，可设置前 N 行不脱敏',
+      description: '保留单元格首尾字符、中间替换为星号，可设置前 N 行与指定列不脱敏',
       icon: 'Hide',
       component: DataMasking,
       executors: ['excel-mask'],

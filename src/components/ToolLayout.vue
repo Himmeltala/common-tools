@@ -73,8 +73,11 @@ async function handleCopy() {
 .tool-toolbar {
   display: flex;
   align-items: center;
+  flex-wrap: nowrap;
   gap: 8px;
   flex-shrink: 0;
+  overflow-x: auto;
+  scrollbar-width: thin;
 }
 .tool-panes {
   flex: 1;
@@ -106,6 +109,7 @@ async function handleCopy() {
 :deep(.toolbar-label) {
   font-size: 12px;
   color: var(--el-text-color-secondary);
+  white-space: nowrap;
 }
 :deep(.file-name) {
   font-size: 12px;

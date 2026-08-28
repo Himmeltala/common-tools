@@ -10,7 +10,9 @@
 import * as XLSX from 'xlsx'
 import { toolExecutors, type ToolExecuteResult } from '@electron/services/tool-executor.service'
 
-// 预览返回的最大数据行数
+// 脱敏预览返回的最大数据行数
+const MASK_PREVIEW_MAX_ROWS = 30
+// 其他工具预览返回的最大数据行数
 const PREVIEW_MAX_ROWS = 200
 // 脱敏替换字符
 const MASK_CHAR = '*'
@@ -60,13 +62,16 @@ function readFirstSheet(bytes: Uint8Array): { sheetName: string; rows: string[][
 }
 
 /**
- * 按行脱敏，跳过前 skipRows 行
+ * 按行脱敏，跳过前 skipRows 行，排除指定列
  * @param rows 原始二维数据
  * @param skipRows 不脱敏的行数
+ * @param excludeCols 不参与脱敏的列索引集合
  * @returns 脱敏后的二维数据
  */
-function maskRows(rows: string[][], skipRows: number): string[][] {
-  return rows.map((row, index) => (index < skipRows ? row : row.map(maskText)))
+function maskRows(rows: string[][], skipRows: number, excludeCols: ReadonlySet<number>): string[][] {
+  return rows.map((row, index) =>
+    index < skipRows ? row : row.map((cell, col) => (excludeCols.has(col) ? cell : maskText(cell))),
+  )
 }
 
 /**
@@ -100,6 +105,11 @@ toolExecutors.register({
   async execute(params: Record<string, unknown>): Promise<ToolExecuteResult> {
     const bytes = params.bytes as Uint8Array
     const skipRows = Math.max(0, Number(params.skipRows) || 0)
+    const excludeCols = new Set<number>(
+      (Array.isArray(params.excludeColumns) ? params.excludeColumns : []).filter(
+        (col) => typeof col === 'number',
+      ),
+    )
 
     if (!bytes || bytes.length === 0) {
       return { success: false, error: '未提供 Excel 文件内容' }
@@ -111,7 +121,7 @@ toolExecutors.register({
     }
 
     try {
-      const masked = maskRows(parsed.rows, skipRows)
+      const masked = maskRows(parsed.rows, skipRows, excludeCols)
 
       // 生成脱敏后的工作簿并转为 base64
       const outSheet = XLSX.utils.aoa_to_sheet(masked)
@@ -126,11 +136,11 @@ toolExecutors.register({
         success: true,
         data: {
           sheetName: parsed.sheetName,
-          previewOriginal: parsed.rows.slice(0, PREVIEW_MAX_ROWS),
-          previewMasked: masked.slice(0, PREVIEW_MAX_ROWS),
+          previewOriginal: parsed.rows.slice(0, MASK_PREVIEW_MAX_ROWS),
+          previewMasked: masked.slice(0, MASK_PREVIEW_MAX_ROWS),
           totalRows,
           totalCols,
-          truncated: totalRows > PREVIEW_MAX_ROWS,
+          truncated: totalRows > MASK_PREVIEW_MAX_ROWS,
           base64,
         },
       }

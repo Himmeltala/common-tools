@@ -13,11 +13,21 @@
         <el-button :icon="FolderOpened" size="small">打开 Excel 文件</el-button>
       </el-upload>
       <el-button :icon="RefreshRight" size="small" @click="clearInput">清空</el-button>
-      <el-divider direction="vertical" />
       <span class="toolbar-label">前</span>
       <el-input-number v-model="skipRows" :min="0" size="small" controls-position="right" style="width: 90px" />
       <span class="toolbar-label">行不脱敏</span>
-      <el-divider direction="vertical" />
+      <el-select
+        v-model="excludeColumns"
+        multiple
+        collapse-tags
+        collapse-tags-tooltip
+        clearable
+        size="small"
+        placeholder="不脱敏列"
+        style="min-width: 130px"
+      >
+        <el-option v-for="col in columnOptions" :key="col.index" :label="col.label" :value="col.index" />
+      </el-select>
       <el-button
         :icon="Download"
         type="primary"
@@ -78,7 +88,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, ref, toRaw, watch } from 'vue'
 import { FolderOpened, RefreshRight, Download } from '@element-plus/icons-vue'
 import type { UploadFile } from 'element-plus'
 import ToolLayout from '@/components/ToolLayout.vue'
@@ -88,13 +98,15 @@ const logStore = useLogStore()
 
 // 单文件大小上限，单位 MB
 const MAX_FILE_SIZE_MB = 50
-// 预览显示的最大行数，与主进程执行器保持一致
-const PREVIEW_LIMIT = 200
+// 预览显示的最大行数，与主进程脱敏执行器保持一致
+const PREVIEW_LIMIT = 30
 
 const fileBytes = ref<Uint8Array | null>(null)
 const currentFile = ref('')
 const sheetName = ref('')
 const skipRows = ref(1)
+// 不参与脱敏的列索引集合
+const excludeColumns = ref<number[]>([])
 const previewOriginal = ref<string[][]>([])
 const previewMasked = ref<string[][]>([])
 const totalRows = ref(0)
@@ -116,6 +128,14 @@ const tableColumns = computed(() => {
     label: header[i] || `列${i + 1}`,
   }))
 })
+
+// 列选择选项，值为列索引，标签为表头或默认列名
+const columnOptions = computed(() =>
+  tableColumns.value.map((col, index) => ({
+    index,
+    label: col.label,
+  })),
+)
 
 // 原始数据表格行
 const originalData = computed(() => toTableData(previewOriginal.value))
@@ -158,6 +178,7 @@ async function doConvert() {
     const result = await window.electronAPI.invoke('tool:execute', 'excel-mask', {
       bytes: fileBytes.value,
       skipRows: skipRows.value,
+      excludeColumns: toRaw(excludeColumns.value),
     })
     if (result.success) {
       previewOriginal.value = result.data.previewOriginal
@@ -182,7 +203,7 @@ async function doConvert() {
   }
 }
 
-watch(skipRows, () => {
+watch([skipRows, excludeColumns], () => {
   if (debounceTimer) clearTimeout(debounceTimer)
   debounceTimer = setTimeout(doConvert, 300)
 })
@@ -198,6 +219,7 @@ async function handleFileOpen(uploadFile: UploadFile) {
     const buffer = await file.arrayBuffer()
     fileBytes.value = new Uint8Array(buffer)
     currentFile.value = file.name
+    excludeColumns.value = []
     parseError.value = ''
     doConvert()
   } catch {
@@ -209,6 +231,7 @@ function clearInput() {
   fileBytes.value = null
   currentFile.value = ''
   sheetName.value = ''
+  excludeColumns.value = []
   parseError.value = ''
   resetResult()
 }
