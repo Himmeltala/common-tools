@@ -1,5 +1,6 @@
 allowBuilds:
   '@parcel/watcher': true
+  # electron-builder 自身依赖 electron-builder-squirrel-windows，后者又依赖 electron-winstaller，删不掉
   electron-winstaller: true
   electron: true
   '@electron/get': true
@@ -8,5 +9,8 @@ allowBuilds:
 nodeLinker: hoisted
 overrides:
   yauzl: 3.4.0
+  # app-builder-lib 26.x 声明 @electron/get 为 ^3.0.0，代码里却用 3.1.0 才有的 ElectronDownloadCacheMode，
+  # 解析到 3.0.0 会让打包崩在 reading 'ReadWrite'，这里锁到 3.1.0
+  '@electron/get@3.0.0': 3.1.0
   '@electron/node-gyp': 10.2.0-electron.1
   '@types/minimatch': 3.0.5

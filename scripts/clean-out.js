@@ -2,17 +2,18 @@
  * @Author: zhengrenfu
  * @Date: 2026-07-15
  * @LastEditors: zhengrenfu
- * @LastEditTime: 2026-07-15
+ * @LastEditTime: 2026-09-24
  * @FilePath: \scripts\clean-out.js
- * 描述: 删除 out 目录，处理文件锁定问题（重试、重命名策略）
+ * 描述: 删除打包产物目录（项目内的 out 与安装包输出目录），处理文件锁定问题（重试、重命名策略）
  */
 
 import { existsSync, rmSync, renameSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { join, resolve } from 'node:path'
 import { tmpdir } from 'node:os'
 import { randomUUID } from 'node:crypto'
 
-const OUT_DIR = resolve('out')
+// out 是 electron-builder 的输出目录，见 electron-builder.yml 的 directories.output
+const TARGETS = ['out']
 const MAX_RETRIES = 3
 const RETRY_DELAY_MS = 2000
 
@@ -44,24 +45,32 @@ function forceRemove(dirPath) {
   return false
 }
 
-if (!existsSync(OUT_DIR)) {
-  console.log('[clean-out] out 目录不存在，跳过清理')
-  process.exit(0)
-}
+let failed = false
 
-console.log('[clean-out] 删除 out 目录...')
-const success = forceRemove(OUT_DIR)
+for (const target of TARGETS) {
+  const dirPath = resolve(target)
 
-if (success) {
-  console.log('[clean-out] 删除成功')
-} else {
+  if (!existsSync(dirPath)) {
+    console.log(`[clean-out] ${target} 目录不存在，跳过清理`)
+    continue
+  }
+
+  console.log(`[clean-out] 删除 ${target} 目录...`)
+
+  if (forceRemove(dirPath)) {
+    console.log(`[clean-out] ${target} 删除成功`)
+    continue
+  }
+
+  failed = true
   // 最后手段：列出锁定的文件
-  console.error('[clean-out] 无法删除 out 目录，可能被以下程序占用：')
-  console.error('  - 文件资源管理器打开了 out 目录')
-  console.error('  - 上一次打包的程序仍在运行')
+  console.error(`[clean-out] 无法删除 ${target} 目录，可能被以下程序占用：`)
+  console.error(`  - 文件资源管理器打开了 ${target} 目录`)
+  console.error('  - 上一次打包的 CommonTools.exe 仍在运行')
   console.error('  - 杀毒软件正在扫描')
   console.error('')
   console.error('请关掉上述程序后重试，或用 handle64.exe 查找锁定进程：')
-  console.error('  handle64.exe out /accepteula')
-  process.exit(1)
+  console.error(`  handle64.exe ${target} /accepteula`)
 }
+
+process.exit(failed ? 1 : 0)
