@@ -10,28 +10,22 @@
 import { app } from 'electron'
 import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync, statSync } from 'fs'
 import { join } from 'path'
-import { homedir } from 'os'
 
 /** 版本升级时强制同步的文件 */
 const FORCE_SYNC_FILES = new Set(['settings_schema.json'])
 
-/**
- * 获取应用数据目录路径
- * @param appName 应用名称
- */
-export function getDataDir(appName: string): string {
-  const base = process.env.APPDATA || homedir()
-  return join(base, appName)
+/** 获取应用数据目录路径，取自 package.json 的 productName */
+export function getDataDir(): string {
+  return app.getPath('userData')
 }
 
 /**
  * 确保数据目录存在，首次启动时将模板文件同步过去
- * @param appName 应用名称
  * @param sourceRoot 项目根目录或 resources 路径
  * @returns 数据目录路径
  */
-export function ensureDataDir(appName: string, sourceRoot: string): string {
-  const dataDir = getDataDir(appName)
+export function ensureDataDir(sourceRoot: string): string {
+  const dataDir = getDataDir()
   const assetDir = join(dataDir, 'assets')
   mkdirSync(assetDir, { recursive: true })
 

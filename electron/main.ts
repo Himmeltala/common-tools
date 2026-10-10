@@ -26,9 +26,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 // 自定义协议须在 app ready 前登记
 registerImageScheme()
 
-/** 数据目录等路径用英文 */
-const APP_NAME = 'common-tools'
-/** 窗口标题与任务栏用中文 */
+/** 窗口标题与任务栏用中文；存储路径由 package.json 的 productName 决定，保持英文 */
 const APP_TITLE = '常用工具箱'
 // #region Services & State
 let mainWindow: BrowserWindow | null = null
@@ -196,7 +194,7 @@ function registerIpc(): void {
 // #region Init
 function initServices(): void {
   const sourceRoot = app.isPackaged ? process.resourcesPath : resolve(__dirname, '..')
-  const dataDir = ensureDataDir(APP_NAME, sourceRoot)
+  const dataDir = ensureDataDir(sourceRoot)
   store = createStore(dataDir)
 
   appVersion = app.getVersion()
@@ -243,8 +241,8 @@ if (!gotLock) {
   })
 }
 
-// Windows 通知要求设置 AppUserModelId
-app.setAppUserModelId('com.common-tools.app')
+// Windows 通知要求设置 AppUserModelId，须与 electron-builder.yml 的 appId 一致
+app.setAppUserModelId('com.zhengrenfu.commontools')
 
 app.whenReady().then(() => {
   initServices()
