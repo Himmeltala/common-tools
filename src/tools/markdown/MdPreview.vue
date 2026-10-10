@@ -9,9 +9,7 @@
 <template>
   <ToolLayout :copy-text="source">
     <template #toolbar>
-      <el-upload :auto-upload="false" :show-file-list="false" accept=".md,.markdown" @change="handleFileOpen">
-        <el-button :icon="FolderOpened" size="small">打开 MD 文件</el-button>
-      </el-upload>
+      <el-button :icon="FolderOpened" size="small" @click="handleOpenFile">打开 MD 文件</el-button>
       <el-button :icon="RefreshRight" size="small" @click="handleReset">清空</el-button>
       <el-divider direction="vertical" />
       <span class="toolbar-label">主题：</span>
@@ -55,12 +53,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
+import { debounce } from 'lodash-es'
 import { FolderOpened, RefreshRight, DocumentCopy } from '@element-plus/icons-vue'
 import MarkdownIt from 'markdown-it'
 import hljs from 'highlight.js'
 import 'highlight.js/styles/github-dark.min.css'
-import type { UploadFile } from 'element-plus'
 import ToolLayout from '@/components/ToolLayout.vue'
 import { useLogStore } from '@/stores/log.store'
 import { maybeShowSysNotification } from '@/utils/sysNotification'
@@ -185,18 +183,76 @@ const md = new MarkdownIt({
 
 const source = ref('')
 const currentFile = ref('')
+const filePath = ref('')
+const resolvedSource = ref('')
 const converting = ref(false)
 const errorMsg = ref('')
 const activeTheme = ref('light')
+
+/** md 所在目录，相对图片路径以它为基准 */
+const baseDir = computed(() => filePath.value.replace(/[\\/][^\\/]*$/, ''))
 
 const currentThemeLabel = computed(() => {
   return themes.find((t) => t.id === activeTheme.value)?.label || '亮色'
 })
 
 const renderedHtml = computed(() => {
-  if (!source.value) return ''
-  return md.render(source.value)
+  if (!resolvedSource.value) return ''
+  return md.render(resolvedSource.value)
 })
+
+let resolveSeq = 0
+let lastMissingKey = ''
+
+/** 汇报上一轮未找到的图片，内容不变时不重复记 */
+function reportMissing(missing: string[]) {
+  const key = missing.join('|')
+  if (key === lastMissingKey) return
+  lastMissingKey = key
+  for (const src of missing) {
+    logStore.addLog('warning', `图片不存在: ${src}`)
+  }
+}
+
+/**
+ * 把本地图片路径改写为 mdimg 地址，供预览与 PDF 共用
+ */
+async function resolveImages() {
+  if (!source.value || !baseDir.value || !window.electronAPI) {
+    resolvedSource.value = source.value
+    lastMissingKey = ''
+    return
+  }
+
+  const seq = ++resolveSeq
+  const result = await window.electronAPI.invoke('tool:execute', 'md-resolve-images', {
+    markdown: source.value,
+    baseDir: baseDir.value,
+  })
+  if (seq !== resolveSeq) return
+
+  if (!result.success) {
+    resolvedSource.value = source.value
+    logStore.addLog('error', result.error || '图片路径解析失败')
+    return
+  }
+  resolvedSource.value = result.data.markdown
+  reportMissing(result.data.missing || [])
+}
+
+const scheduleResolve = debounce(resolveImages, 150)
+
+watch(
+  [source, baseDir],
+  () => {
+    if (!baseDir.value || !window.electronAPI) {
+      resolvedSource.value = source.value
+      return
+    }
+    scheduleResolve()
+  },
+  { immediate: true },
+)
 
 /**
  * 构建用于 PDF 生成的完整 HTML 文档
@@ -211,26 +267,34 @@ function buildPdfHtml(): string {
   <meta charset="UTF-8">
   <style>${css}</style>
 </head>
-<body>${renderedHtml.value}</body>
+<body>${md.render(resolvedSource.value)}</body>
 </html>`
 }
 
-async function handleFileOpen(uploadFile: UploadFile) {
-  const file = uploadFile.raw
-  if (!file) return
-  try {
-    const text = await file.text()
-    source.value = text
-    currentFile.value = file.name
-    errorMsg.value = ''
-  } catch {
-    logStore.addLog('error', '文件读取失败')
+async function handleOpenFile() {
+  const path = await window.electronAPI.invoke('system:selectFile', [
+    { name: 'Markdown 文件', extensions: ['md', 'markdown'] },
+  ])
+  if (!path) return
+
+  const result = await window.electronAPI.invoke('system:readTextFile', path)
+  if (!result.success) {
+    logStore.addLog('error', result.error || '文件读取失败')
+    return
   }
+
+  filePath.value = path
+  currentFile.value = path.replace(/^.*[\\/]/, '')
+  source.value = result.content
+  errorMsg.value = ''
+  logStore.addLog('success', `已打开: ${path}`)
 }
 
 function handleReset() {
   source.value = ''
   currentFile.value = ''
+  filePath.value = ''
+  resolvedSource.value = ''
   errorMsg.value = ''
 }
 
@@ -246,6 +310,8 @@ async function handleConvert() {
   converting.value = true
   errorMsg.value = ''
   try {
+    // 先补一次改写，避免防抖未触发时导出到未解析的路径
+    await resolveImages()
     const html = buildPdfHtml()
     const baseName = currentFile.value ? currentFile.value.replace(/\.(md|markdown)$/i, '') : 'output'
     const result = await window.electronAPI.invoke('tool:execute', 'md-to-pdf', { html, fileName: baseName })

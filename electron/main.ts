@@ -11,6 +11,7 @@ import { ensureDataDir } from '@electron/services/core/data-dir.service'
 import { createStore, storeGet, storeSet, storeDelete, storeKeys } from '@electron/services/core/store.service'
 import type { Store } from '@electron/services/core/store.service'
 import { toolExecutors, type ToolExecutorContext } from '@electron/services/tool-executor.service'
+import { registerImageScheme, handleImageProtocol } from '@electron/services/markdown/image-protocol'
 import '@electron/services/python-executor.service'
 import '@electron/services/markdown'
 import '@electron/services/database'
@@ -21,6 +22,9 @@ import { setupSysNotificationIpc } from '@electron/services/sys-notification.ser
 
 /** ESM 下 __dirname 不可用，通过 import.meta.url 派生 */
 const __dirname = dirname(fileURLToPath(import.meta.url))
+
+// 自定义协议须在 app ready 前登记
+registerImageScheme()
 
 const APP_NAME = 'common-tools'
 // #region Services & State
@@ -155,6 +159,13 @@ function registerIpc(): void {
 
   // 系统
   ipcMain.handle('system:getVersion', () => appVersion)
+  ipcMain.handle('system:readTextFile', (_e, filePath: string) => {
+    try {
+      return { success: true, content: readFileSync(filePath, 'utf-8') }
+    } catch (e: any) {
+      return { success: false, error: e.message || '文件读取失败' }
+    }
+  })
   ipcMain.handle('system:selectDirectory', async (_e, defaultPath?: string) => {
     const result = await dialog.showOpenDialog({ properties: ['openDirectory'], defaultPath })
     return result.canceled ? null : result.filePaths[0]
@@ -234,6 +245,7 @@ app.setAppUserModelId('com.common-tools.app')
 
 app.whenReady().then(() => {
   initServices()
+  handleImageProtocol()
   createWindow()
 })
 

@@ -12,6 +12,18 @@ import { writeFileSync, mkdirSync, unlinkSync, existsSync } from 'fs'
 import { join } from 'path'
 import { tmpdir } from 'os'
 import { toolExecutors, type ToolExecuteResult } from '@electron/services/tool-executor.service'
+import { rewriteLocalImages } from '@electron/services/markdown/image-resolver'
+
+// 注册本地图片路径改写执行器，渲染进程与 PDF 导出共用同一份结果
+toolExecutors.register({
+  id: 'md-resolve-images',
+  async execute(params: Record<string, unknown>): Promise<ToolExecuteResult> {
+    const markdown = params.markdown as string
+    const baseDir = (params.baseDir as string) || ''
+    const { markdown: rewritten, missing } = rewriteLocalImages(markdown || '', baseDir)
+    return { success: true, data: { markdown: rewritten, missing } }
+  },
+})
 
 // 注册 MD 转 PDF 执行器
 toolExecutors.register({
