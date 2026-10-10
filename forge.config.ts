@@ -4,7 +4,7 @@ import { MakerZIP } from '@electron-forge/maker-zip'
 
 const config: ForgeConfig = {
   packagerConfig: {
-    name: 'common-tools',
+    name: 'CommonTools',
     executableName: 'common-tools',
     asar: {
       unpack: '**/node_modules/ffmpeg-static/**',
@@ -15,6 +15,7 @@ const config: ForgeConfig = {
   makers: [
     new MakerSquirrel({
       name: 'common-tools',
+      title: '常用工具箱',
       authors: 'zhengrenfu',
       description: 'Windows 桌面工具箱，集成 Markdown 预览、PDF 转换等常用工具',
     }),

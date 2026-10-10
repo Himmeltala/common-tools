@@ -26,7 +26,10 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 // 自定义协议须在 app ready 前登记
 registerImageScheme()
 
+/** 数据目录等路径用英文 */
 const APP_NAME = 'common-tools'
+/** 窗口标题与任务栏用中文 */
+const APP_TITLE = '常用工具箱'
 // #region Services & State
 let mainWindow: BrowserWindow | null = null
 let settings: AppSettings
@@ -42,7 +45,7 @@ function createWindow(): void {
     height: 800,
     minWidth: 900,
     minHeight: 500,
-    title: APP_NAME,
+    title: APP_TITLE,
     show: false,
     webPreferences: {
       preload: join(__dirname, 'preload.js'),
