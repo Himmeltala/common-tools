@@ -54,6 +54,19 @@ toolExecutors.register({
 
       pdfWin.loadFile(htmlPath)
 
+      // 关窗与删临时 HTML 成功、失败两条路径都要做
+      let cleaned = false
+      const cleanup = () => {
+        if (cleaned) return
+        cleaned = true
+        pdfWin.destroy()
+        try {
+          if (existsSync(htmlPath)) unlinkSync(htmlPath)
+        } catch {
+          // ignore
+        }
+      }
+
       pdfWin.webContents.on('did-finish-load', async () => {
         try {
           const pdfData = await pdfWin.webContents.printToPDF({
@@ -70,18 +83,13 @@ toolExecutors.register({
         } catch (e: any) {
           resolve({ success: false, error: e.message || 'PDF 生成失败' })
         } finally {
-          pdfWin.destroy()
-          try {
-            if (existsSync(htmlPath)) unlinkSync(htmlPath)
-          } catch {
-            // ignore
-          }
+          cleanup()
         }
       })
 
       pdfWin.webContents.on('did-fail-load', () => {
         resolve({ success: false, error: '加载 HTML 失败' })
-        pdfWin.destroy()
+        cleanup()
       })
     })
   },

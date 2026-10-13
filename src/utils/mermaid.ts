@@ -103,12 +103,14 @@ export async function renderMermaid(code: string, themeId: MermaidThemeName): Pr
 
   applyMermaidTheme(themeId)
   const result: MermaidRenderResult = { svg: '', error: '' }
+  const id = `mermaid-render-${++renderSeq}`
   try {
-    renderSeq += 1
-    const { svg } = await mermaid.render(`mermaid-render-${renderSeq}`, trimmed)
+    const { svg } = await mermaid.render(id, trimmed)
     result.svg = svg
   } catch (e) {
     result.error = e instanceof Error ? e.message : '渲染失败，请检查 Mermaid 语法'
+    // 渲染失败时 mermaid 会把临时容器留在 body 里，自己收掉
+    document.getElementById(`d${id}`)?.remove()
   }
 
   if (renderCache.size >= MAX_CACHE_ENTRIES) renderCache.clear()
