@@ -22,12 +22,7 @@
 
     <template #left-header>MySQL 风格 SQL</template>
     <template #left>
-      <el-input
-        v-model="inputSql"
-        type="textarea"
-        class="editor-textarea"
-        placeholder="粘贴 MySQL INSERT / UPDATE / SELECT / CREATE TABLE 语句..."
-      />
+      <PlainEditor v-model="inputSql" placeholder="粘贴 MySQL INSERT / UPDATE / SELECT / CREATE TABLE 语句..." />
     </template>
 
     <template #right-header>虚谷风格 SQL</template>
@@ -51,6 +46,7 @@ import { computed, ref, watch } from 'vue'
 import { FolderOpened, RefreshRight, Download } from '@element-plus/icons-vue'
 import type { UploadFile } from 'element-plus'
 import ToolLayout from '@/components/ToolLayout.vue'
+import PlainEditor from '@/components/PlainEditor.vue'
 import { useLogStore } from '@/stores/log.store'
 import { MAX_DISPLAY_LINES, truncateLines } from '@/utils/text'
 

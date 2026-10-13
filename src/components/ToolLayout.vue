@@ -125,11 +125,10 @@ async function handleCopy() {
 :deep(.editor-textarea) {
   flex: 1;
   min-height: 0;
-}
-:deep(.editor-textarea .el-textarea__inner) {
-  height: 100%;
+  width: 100%;
   border: none;
   border-radius: 0;
+  outline: none;
   resize: none;
   padding: 12px;
   font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
@@ -137,6 +136,9 @@ async function handleCopy() {
   line-height: 1.5;
   background: var(--el-bg-color);
   color: var(--el-text-color-primary);
+}
+:deep(.editor-textarea::placeholder) {
+  color: var(--el-text-color-placeholder);
 }
 
 /* 右侧结果区通用样式 */

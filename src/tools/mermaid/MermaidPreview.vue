@@ -17,7 +17,7 @@
       <el-divider direction="vertical" />
       <span class="toolbar-label">主题：</span>
       <el-select v-model="activeTheme" size="small" style="width: 110px">
-        <el-option v-for="t in themes" :key="t.id" :label="t.label" :value="t.id" />
+        <el-option v-for="t in MERMAID_THEMES" :key="t.id" :label="t.label" :value="t.id" />
       </el-select>
       <el-divider direction="vertical" />
       <span class="toolbar-label">背景：</span>
@@ -35,10 +35,8 @@
 
     <template #left-header>Mermaid 代码</template>
     <template #left>
-      <el-input
+      <PlainEditor
         v-model="code"
-        type="textarea"
-        class="editor-textarea"
         placeholder="在此输入 Mermaid 代码，例如：&#10;graph TD&#10;    A[开始] --> B{判断}&#10;    B -->|是| C[执行]&#10;    B -->|否| D[结束]"
       />
     </template>
@@ -74,76 +72,13 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
 import { ZoomIn, ZoomOut, RefreshRight, Download, PictureFilled, Document, DocumentCopy } from '@element-plus/icons-vue'
-import mermaid from 'mermaid'
-import type { MermaidConfig } from 'mermaid'
 import jsPDF from 'jspdf'
 import ToolLayout from '@/components/ToolLayout.vue'
+import PlainEditor from '@/components/PlainEditor.vue'
 import { useLogStore } from '@/stores/log.store'
+import { MERMAID_THEMES, applyMermaidTheme, renderMermaid, type MermaidThemeName } from '@/utils/mermaid'
 
 const logStore = useLogStore()
-
-// 预设主题定义
-type MermaidThemeName =
-  | 'default'
-  | 'basic'
-  | 'dark'
-  | 'forest'
-  | 'neutral'
-  | 'neo'
-  | 'neo-dark'
-  | 'redux'
-  | 'redux-dark'
-
-interface MermaidTheme {
-  id: MermaidThemeName
-  label: string
-}
-
-const themes: MermaidTheme[] = [
-  { id: 'default', label: '默认' },
-  { id: 'basic', label: '基础' },
-  { id: 'dark', label: '暗色' },
-  { id: 'forest', label: '森林' },
-  { id: 'neutral', label: '中性' },
-  { id: 'neo', label: 'Neo' },
-  { id: 'neo-dark', label: 'Neo 暗色' },
-  { id: 'redux', label: 'Redux' },
-  { id: 'redux-dark', label: 'Redux 暗色' },
-]
-
-// 主题对应 mermaid 配置：内置主题直接映射，自定义主题基于 base 主题定制 themeVariables
-interface MermaidThemeConfig {
-  theme: NonNullable<MermaidConfig['theme']>
-  themeVariables?: Record<string, string>
-}
-
-const themeConfigs: Record<MermaidThemeName, MermaidThemeConfig> = {
-  default: { theme: 'default' },
-  dark: { theme: 'dark' },
-  forest: { theme: 'forest' },
-  neutral: { theme: 'neutral' },
-  neo: { theme: 'neo' },
-  'neo-dark': { theme: 'neo-dark' },
-  redux: { theme: 'redux' },
-  'redux-dark': { theme: 'redux-dark' },
-  // 基础主题：白底节点、浅灰边框(#cccccc)、深灰文字(#333333)、灰线条(#696969)、深灰箭头(#666666)
-  basic: {
-    theme: 'base',
-    themeVariables: {
-      primaryColor: '#ffffff',
-      secondaryColor: '#ffffff',
-      tertiaryColor: '#ffffff',
-      primaryTextColor: '#333333',
-      secondaryTextColor: '#333333',
-      tertiaryTextColor: '#333333',
-      primaryBorderColor: '#cccccc',
-      secondaryBorderColor: '#cccccc',
-      tertiaryBorderColor: '#cccccc',
-      lineColor: '#696969',
-      arrowheadColor: '#666666',
-    },
-  },
-}
 
 // 预览背景选项
 interface BgOption {
@@ -182,7 +117,6 @@ const code = ref('')
 const renderedSvg = ref('')
 const renderError = ref('')
 const previewRef = ref<HTMLElement>()
-const renderId = ref(0)
 const activeTheme = ref<MermaidThemeName>('default')
 const filenameTemplate = ref('{{year}}{{month}}{{day}}-{{hour}}{{minute}}{{second}}')
 
@@ -197,7 +131,7 @@ let dragStartTranslateX = 0
 let dragStartTranslateY = 0
 
 const currentThemeLabel = computed(() => {
-  return themes.find((t) => t.id === activeTheme.value)?.label || '默认'
+  return MERMAID_THEMES.find((t) => t.id === activeTheme.value)?.label || '默认'
 })
 
 // 判断当前是否为暗色系主题
@@ -215,7 +149,7 @@ onMounted(async () => {
   // 加载上次选择的主题
   try {
     const savedTheme = await window.electronAPI.invoke('store:get', 'mermaid.preview.theme')
-    if (savedTheme && themes.some((t) => t.id === savedTheme)) {
+    if (savedTheme && MERMAID_THEMES.some((t) => t.id === savedTheme)) {
       activeTheme.value = savedTheme
     }
   } catch {
@@ -230,13 +164,7 @@ onMounted(async () => {
   } catch {
     // 使用默认背景
   }
-  const themeConfig = themeConfigs[activeTheme.value]
-  mermaid.initialize({
-    startOnLoad: false,
-    theme: themeConfig.theme,
-    themeVariables: themeConfig.themeVariables,
-    securityLevel: 'loose',
-  })
+  applyMermaidTheme(activeTheme.value)
   // 加载导出文件名模板配置
   try {
     const tpl = await window.electronAPI.invoke('settings:get', 'mermaid.preview.filenameTemplate')
@@ -278,25 +206,15 @@ watch(code, () => {
 
 // 主题切换时重新渲染并持久化选择
 watch(activeTheme, (newTheme) => {
-  const themeConfig = themeConfigs[newTheme]
-  mermaid.initialize({
-    startOnLoad: false,
-    theme: themeConfig.theme,
-    themeVariables: themeConfig.themeVariables,
-    securityLevel: 'loose',
-  })
+  applyMermaidTheme(newTheme)
   scheduleRender()
   // 记录上次选择的主题，下次打开时恢复
-  window.electronAPI
-    .invoke('store:set', 'mermaid.preview.theme', newTheme)
-    .catch(() => {})
+  window.electronAPI.invoke('store:set', 'mermaid.preview.theme', newTheme).catch(() => {})
 })
 
 // 背景切换时持久化选择
 watch(activeBg, (newBg) => {
-  window.electronAPI
-    .invoke('store:set', 'mermaid.preview.background', newBg)
-    .catch(() => {})
+  window.electronAPI.invoke('store:set', 'mermaid.preview.background', newBg).catch(() => {})
 })
 
 function scheduleRender() {
@@ -315,15 +233,12 @@ async function renderDiagram(mermaidCode: string) {
     renderError.value = ''
     return
   }
-  renderId.value++
-  try {
-    const { svg } = await mermaid.render(`mermaid-${renderId.value}`, trimmed)
-    renderedSvg.value = svg
-    renderError.value = ''
-  } catch (e: any) {
-    renderedSvg.value = ''
-    renderError.value = e.message || '渲染失败，请检查 Mermaid 语法'
-  }
+  const theme = activeTheme.value
+  const result = await renderMermaid(trimmed, theme)
+  // 渲染期间代码或主题又变了，本次结果作废
+  if (trimmed !== code.value.trim() || theme !== activeTheme.value) return
+  renderedSvg.value = result.svg
+  renderError.value = result.error
 }
 
 // 缩放操作

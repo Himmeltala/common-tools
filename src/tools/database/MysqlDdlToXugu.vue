@@ -22,10 +22,8 @@
 
     <template #left-header>MySQL DDL</template>
     <template #left>
-      <el-input
+      <PlainEditor
         v-model="inputSql"
-        type="textarea"
-        class="editor-textarea"
         placeholder="在此粘贴 MySQL CREATE TABLE 建表语句，或点击上方按钮打开 .sql 文件..."
       />
     </template>
@@ -54,6 +52,7 @@ import { computed, ref, watch } from 'vue'
 import { FolderOpened, RefreshRight, Download } from '@element-plus/icons-vue'
 import type { UploadFile } from 'element-plus'
 import ToolLayout from '@/components/ToolLayout.vue'
+import PlainEditor from '@/components/PlainEditor.vue'
 import { useLogStore } from '@/stores/log.store'
 import { MAX_DISPLAY_LINES, truncateLines } from '@/utils/text'
 

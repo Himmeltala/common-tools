@@ -32,21 +32,15 @@
 
     <template #left-header>Markdown 源文本</template>
     <template #left>
-      <el-input
-        v-model="source"
-        type="textarea"
-        class="editor-textarea"
-        placeholder="在此输入 Markdown 文本，或点击上方按钮打开 .md 文件..."
-        resize="none"
-      />
+      <PlainEditor v-model="source" placeholder="在此输入 Markdown 文本，或点击上方按钮打开 .md 文件..." />
     </template>
 
     <template #right-header>预览（{{ currentThemeLabel }}）</template>
     <template #right>
-      <div class="result-area markdown-body" :class="`theme-${activeTheme}`">
+      <div ref="previewRef" class="result-area markdown-body" :class="`theme-${activeTheme}`">
         <div v-if="errorMsg" class="error-text">{{ errorMsg }}</div>
         <div v-else-if="!source" class="placeholder-text">在左侧输入 Markdown 文本后此处将显示渲染结果</div>
-        <div v-else v-html="renderedHtml" />
+        <div v-else v-html="rendered.html" />
       </div>
     </template>
   </ToolLayout>
@@ -60,8 +54,10 @@ import MarkdownIt from 'markdown-it'
 import hljs from 'highlight.js'
 import 'highlight.js/styles/github-dark.min.css'
 import ToolLayout from '@/components/ToolLayout.vue'
+import PlainEditor from '@/components/PlainEditor.vue'
 import { useLogStore } from '@/stores/log.store'
 import { maybeShowSysNotification } from '@/utils/sysNotification'
+import { renderMermaid, type MermaidThemeName } from '@/utils/mermaid'
 
 const logStore = useLogStore()
 
@@ -181,6 +177,43 @@ const md = new MarkdownIt({
   },
 })
 
+// 一次渲染里出现的 mermaid 代码块
+interface MermaidBlock {
+  index: number
+  code: string
+}
+
+interface RenderEnv {
+  blocks: MermaidBlock[]
+}
+
+interface PreviewResult {
+  html: string
+  blocks: MermaidBlock[]
+}
+
+// mermaid 占位元素，渲染完成后回填；导出 PDF 时按同一串替换成 SVG
+function mermaidPlaceholder(index: number): string {
+  return `<div class="md-mermaid" data-md-mermaid="${index}">Mermaid 渲染中…</div>`
+}
+
+const defaultFence = md.renderer.rules.fence!
+md.renderer.rules.fence = (tokens, idx, options, env, self) => {
+  const token = tokens[idx]
+  if (token.info.trim().toLowerCase() === 'mermaid') {
+    const renderEnv = env as RenderEnv
+    const index = renderEnv.blocks.length
+    renderEnv.blocks.push({ index, code: token.content.trim() })
+    return mermaidPlaceholder(index)
+  }
+  return defaultFence(tokens, idx, options, env, self)
+}
+
+function renderMarkdown(markdown: string): PreviewResult {
+  const env: RenderEnv = { blocks: [] }
+  return { html: md.render(markdown, env), blocks: env.blocks }
+}
+
 const source = ref('')
 const currentFile = ref('')
 const filePath = ref('')
@@ -189,22 +222,25 @@ const converting = ref(false)
 const errorMsg = ref('')
 const activeTheme = ref('light')
 
-/** md 所在目录，相对图片路径以它为基准 */
+// md 所在目录，相对图片路径以它为基准
 const baseDir = computed(() => filePath.value.replace(/[\\/][^\\/]*$/, ''))
 
 const currentThemeLabel = computed(() => {
   return themes.find((t) => t.id === activeTheme.value)?.label || '亮色'
 })
 
-const renderedHtml = computed(() => {
-  if (!resolvedSource.value) return ''
-  return md.render(resolvedSource.value)
-})
+const previewRef = ref<HTMLElement>()
+const rendered = computed(() => renderMarkdown(resolvedSource.value))
 
 let resolveSeq = 0
 let lastMissingKey = ''
 
-/** 汇报上一轮未找到的图片，内容不变时不重复记 */
+// md 主题里只有暗色一套需要换成 mermaid 暗色主题
+function mermaidTheme(): MermaidThemeName {
+  return activeTheme.value === 'dark' ? 'dark' : 'default'
+}
+
+// 汇报上一轮未找到的图片，内容不变时不重复记
 function reportMissing(missing: string[]) {
   const key = missing.join('|')
   if (key === lastMissingKey) return
@@ -215,9 +251,9 @@ function reportMissing(missing: string[]) {
 }
 
 /**
- * 把本地图片路径改写为 mdimg 地址，供预览与 PDF 共用
+ * 把本地图片路径改写为 mdimg 地址，改写后的内容供预览与 PDF 共用
  */
-async function resolveImages() {
+async function updatePreview() {
   if (!source.value || !baseDir.value || !window.electronAPI) {
     resolvedSource.value = source.value
     lastMissingKey = ''
@@ -240,34 +276,65 @@ async function resolveImages() {
   reportMissing(result.data.missing || [])
 }
 
-const scheduleResolve = debounce(resolveImages, 150)
+// 每刷新一次都要重建整篇预览 DOM，含 mermaid 图时远超一帧，停顿后再刷新
+const PREVIEW_DEBOUNCE_MS = 250
+const schedulePreview = debounce(() => {
+  void updatePreview()
+}, PREVIEW_DEBOUNCE_MS)
 
-watch(
-  [source, baseDir],
-  () => {
-    if (!baseDir.value || !window.electronAPI) {
-      resolvedSource.value = source.value
-      return
-    }
-    scheduleResolve()
-  },
-  { immediate: true },
-)
+watch([source, baseDir], schedulePreview, { immediate: true })
+
+// 占位元素逐个回填 SVG，缓存命中的立即填；渲染是异步的，DOM 可能已被下一轮换掉
+async function fillDiagrams(result: PreviewResult) {
+  const root = previewRef.value
+  if (!root) return
+
+  const theme = mermaidTheme()
+  for (const node of root.querySelectorAll<HTMLElement>('[data-md-mermaid]')) {
+    if (!node.isConnected) continue
+    if (theme !== mermaidTheme()) return
+    const block = result.blocks[Number(node.dataset.mdMermaid)]
+    if (!block || !block.code) continue
+    // 单张图渲染要几十到几百毫秒，逐张让出主线程，界面不至于连着卡住
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    const { svg, error } = await renderMermaid(block.code, theme)
+    if (!node.isConnected) continue
+    node.innerHTML = svg || `<div class="md-mermaid-error">Mermaid 渲染失败：${md.utils.escapeHtml(error)}</div>`
+  }
+}
+
+watch(rendered, fillDiagrams, { flush: 'post' })
+
+// 换主题后同一批图要按新主题重画
+watch(activeTheme, () => fillDiagrams(rendered.value), { flush: 'post' })
+
+// PDF 里图不能超出纸张内容宽度，图间留白与正文一致
+const MERMAID_PDF_CSS = `
+      .mermaid { margin: 12px 0; }
+      .mermaid svg { max-width: 100%; height: auto; }
+    `
 
 /**
- * 构建用于 PDF 生成的完整 HTML 文档
+ * 构建用于 PDF 生成的完整 HTML 文档，mermaid 图替换成渲染好的 SVG
  * @returns 完整 HTML 字符串
  */
-function buildPdfHtml(): string {
+async function buildPdfHtml(): Promise<string> {
   const theme = themes.find((t) => t.id === activeTheme.value)
   const css = theme ? theme.pdfCss : themes[0].pdfCss
+  const { html, blocks } = renderMarkdown(resolvedSource.value)
+  let body = html
+  for (const block of blocks) {
+    const { svg, error } = await renderMermaid(block.code, mermaidTheme())
+    const content = svg || `<div class="md-mermaid-error">Mermaid 渲染失败：${md.utils.escapeHtml(error)}</div>`
+    body = body.replace(mermaidPlaceholder(block.index), `<div class="mermaid">${content}</div>`)
+  }
   return `<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <style>${css}</style>
+  <style>${css}${MERMAID_PDF_CSS}</style>
 </head>
-<body>${md.render(resolvedSource.value)}</body>
+<body>${body}</body>
 </html>`
 }
 
@@ -311,8 +378,8 @@ async function handleConvert() {
   errorMsg.value = ''
   try {
     // 先补一次改写，避免防抖未触发时导出到未解析的路径
-    await resolveImages()
-    const html = buildPdfHtml()
+    await updatePreview()
+    const html = await buildPdfHtml()
     const baseName = currentFile.value ? currentFile.value.replace(/\.(md|markdown)$/i, '') : 'output'
     const result = await window.electronAPI.invoke('tool:execute', 'md-to-pdf', { html, fileName: baseName })
 
@@ -456,6 +523,21 @@ async function handleConvert() {
 .markdown-body :deep(img) {
   max-width: 100%;
   border-radius: 4px;
+}
+/* mermaid 图按原尺寸显示，比预览栏宽时横向滚动 */
+.markdown-body :deep(.md-mermaid) {
+  margin: 12px 0;
+  padding: 8px 0;
+  overflow-x: auto;
+  font-size: 13px;
+  color: var(--md-blockquote-color, var(--el-text-color-secondary));
+}
+.markdown-body :deep(.md-mermaid svg) {
+  max-width: none;
+}
+.markdown-body :deep(.md-mermaid-error) {
+  color: var(--el-color-danger);
+  white-space: pre-wrap;
 }
 .markdown-body :deep(hr) {
   margin: 20px 0;
